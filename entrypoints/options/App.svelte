@@ -62,6 +62,11 @@
   const typedUrl = $derived(parseInstanceUrl(urlInput));
   const insecure = $derived(typedUrl.ok && isInsecureRemote(typedUrl.baseUrl));
   const savedHost = $derived(saved ? new URL(saved.baseUrl).host : '');
+  // The status section always describes the saved connection, not the form.
+  const unsaved = $derived(
+    saved !== null &&
+      (keyInput.trim() !== '' || !typedUrl.ok || typedUrl.baseUrl !== saved.baseUrl),
+  );
 
   async function refreshPermission() {
     permitted = saved ? await hasHostPermission(saved.baseUrl) : false;
@@ -218,6 +223,12 @@
       <section aria-labelledby="status-heading">
         <h2 id="status-heading">Status</h2>
 
+        {#if unsaved}
+          <p class="hint unsaved">
+            Your changes above are not saved yet. This shows the saved connection to {savedHost}.
+          </p>
+        {/if}
+
         {#if !permitted}
           <p class="notice warning" role="status">
             KaraDial has no access to <strong>{savedHost}</strong>. The browser permission was
@@ -313,6 +324,10 @@
     margin: 0.35rem 0 0;
     color: var(--color-text-muted);
     font-size: 0.875rem;
+  }
+
+  .hint.unsaved {
+    margin: 0 0 0.75rem;
   }
 
   .notice {
