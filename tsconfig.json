@@ -1,3 +1,9 @@
 {
-  "extends": "./.wxt/tsconfig.json"
+  "extends": "./.wxt/tsconfig.json",
+  "compilerOptions": {
+    // Svelte components without `lang="ts"` are treated as JavaScript.
+    // Without these, importing one from TypeScript fails the type check.
+    "allowJs": true,
+    "checkJs": true
+  }
 }

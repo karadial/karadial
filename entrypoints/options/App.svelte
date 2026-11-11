@@ -1,6 +1,3 @@
-<script lang="ts">
-</script>
-
 <main>
   <h1>KaraDial Options</h1>
   <p>Nothing to configure yet. Connection settings arrive in a later milestone.</p>

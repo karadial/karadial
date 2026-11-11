@@ -1,6 +1,3 @@
-<script lang="ts">
-</script>
-
 <main>
   <h1>KaraDial</h1>
   <p>Nothing to show yet. The speed dial arrives in a later milestone.</p>
