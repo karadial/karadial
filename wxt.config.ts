@@ -10,6 +10,10 @@ export default defineConfig({
   manifest: ({ browser }) => ({
     name: 'KaraDial',
     description: 'Speed dial new tab page for bookmarks from your self-hosted Karakeep instance.',
+    permissions: ['storage'],
+    // Nothing is granted at install. The options page requests access to the
+    // one configured Karakeep host at runtime, which needs a covering pattern.
+    optional_host_permissions: ['*://*/*'],
     // The Firefox MV3 default adds `upgrade-insecure-requests`, which would
     // break plain http Karakeep instances on a LAN. Scripts stay bundled only.
     content_security_policy: {
