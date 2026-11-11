@@ -25,6 +25,9 @@
     "test": "vitest run",
     "postinstall": "wxt prepare"
   },
+  "overrides": {
+    "minimatch": "^11.0.8"
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@wxt-dev/module-svelte": "^2.0.5",
