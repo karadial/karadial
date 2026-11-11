@@ -10,6 +10,11 @@ export default defineConfig({
   manifest: ({ browser }) => ({
     name: 'KaraDial',
     description: 'Speed dial new tab page for bookmarks from your self-hosted Karakeep instance.',
+    // The Firefox MV3 default adds `upgrade-insecure-requests`, which would
+    // break plain http Karakeep instances on a LAN. Scripts stay bundled only.
+    content_security_policy: {
+      extension_pages: "script-src 'self'; object-src 'self';",
+    },
     ...(browser === 'firefox' && {
       browser_specific_settings: {
         gecko: {
