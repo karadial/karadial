@@ -44,7 +44,8 @@
       'The instance answered with a redirect. Enter the final address, for example with https:// instead of http://.',
     unauthorized: 'The instance rejected the API key. Check that it is complete and not expired.',
     forbidden: 'The API key is valid but may not read lists. Give it read access.',
-    'not-found': 'No Karakeep API found at this address.',
+    'not-found':
+      'No Karakeep API found at this address. Enter only the base address, without a page path such as /signin.',
     http: 'The instance answered with an error.',
     'invalid-response':
       'The answer does not look like Karakeep. Check that the address points to your Karakeep instance.',
@@ -58,6 +59,7 @@
   let keyInput = $state('');
   let formError = $state('');
   let test = $state<TestState>({ status: 'idle' });
+  let pathRemoved = $state(false);
 
   const typedUrl = $derived(parseInstanceUrl(urlInput));
   const insecure = $derived(typedUrl.ok && isInsecureRemote(typedUrl.baseUrl));
@@ -84,6 +86,7 @@
 
   async function runTest() {
     if (!saved) return;
+    pathRemoved = false;
     test = { status: 'running' };
     try {
       const { listCount } = await createKarakeepClient(saved).testConnection();
@@ -129,8 +132,32 @@
     permitted = granted;
     if (granted) {
       await runTest();
+      await retryWithoutPath(next);
     } else {
       test = { status: 'idle' };
+    }
+  }
+
+  /**
+   * People paste the address of a Karakeep page, for example `/signin`. If the
+   * API is not found below that path, try the bare origin and keep it if it works.
+   */
+  async function retryWithoutPath(connection: Connection) {
+    const origin = new URL(connection.baseUrl).origin;
+    if (test.status !== 'failed' || test.kind !== 'not-found' || origin === connection.baseUrl) {
+      return;
+    }
+    const trimmed: Connection = { baseUrl: origin, apiKey: connection.apiKey };
+    try {
+      const { listCount } = await createKarakeepClient(trimmed).testConnection();
+      await saveConnection(trimmed);
+      saved = trimmed;
+      urlInput = trimmed.baseUrl;
+      test = { status: 'ok', listCount };
+      pathRemoved = true;
+    } catch (error) {
+      // Keep the original failure on screen.
+      if (!(error instanceof KarakeepError)) throw error;
     }
   }
 
@@ -153,6 +180,7 @@
     keyInput = '';
     formError = '';
     test = { status: 'idle' };
+    pathRemoved = false;
   }
 </script>
 
@@ -246,6 +274,7 @@
                 Connected to <strong>{savedHost}</strong>. The key can read
                 {test.listCount}
                 {test.listCount === 1 ? 'list' : 'lists'}.
+                {#if pathRemoved}The page path was removed from the address.{/if}
               </p>
             {:else if test.status === 'failed'}
               <p class="notice error">
