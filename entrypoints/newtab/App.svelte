@@ -181,7 +181,8 @@
     }
   }
 
-  const openOptions = () => void browser.runtime.openOptionsPage();
+  // Same tab, so the options page can lead back here and the browser's back button works.
+  const openOptions = () => location.assign(browser.runtime.getURL('/options.html'));
 
   function isTyping(target: EventTarget | null): boolean {
     return (
