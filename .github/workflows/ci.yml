@@ -2,6 +2,9 @@ name: CI
 
 on:
   push:
+    # Branches only: a tag push runs the same checks in release.yml.
+    branches:
+      - '**'
   pull_request:
 
 permissions:
