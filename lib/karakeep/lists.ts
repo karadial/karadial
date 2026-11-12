@@ -37,3 +37,17 @@ export function buildListTree(lists: readonly KarakeepList[]): ListNode[] {
   }
   return roots;
 }
+
+export interface FlatListEntry {
+  list: KarakeepList;
+  /** 0 for a root, 1 for its children and so on. */
+  depth: number;
+}
+
+/** The tree in display order (depth first), for rendering as an indented list. */
+export function flattenListTree(nodes: readonly ListNode[], depth = 0): FlatListEntry[] {
+  return nodes.flatMap((node) => [
+    { list: node.list, depth },
+    ...flattenListTree(node.children, depth + 1),
+  ]);
+}

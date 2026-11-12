@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildListTree, type ListNode } from './lists';
+import { buildListTree, flattenListTree, type ListNode } from './lists';
 import type { KarakeepList } from './types';
 
 const list = (id: string, parentId: string | null = null): KarakeepList => ({
@@ -41,5 +41,22 @@ describe('buildListTree', () => {
 
   it('returns an empty tree for no lists', () => {
     expect(buildListTree([])).toEqual([]);
+  });
+});
+
+describe('flattenListTree', () => {
+  it('lists every node depth first with its depth', () => {
+    const tree = buildListTree([
+      list('work'),
+      list('home'),
+      list('tools', 'work'),
+      list('editors', 'tools'),
+    ]);
+    expect(flattenListTree(tree).map((entry) => [entry.list.id, entry.depth])).toEqual([
+      ['work', 0],
+      ['tools', 1],
+      ['editors', 2],
+      ['home', 0],
+    ]);
   });
 });
