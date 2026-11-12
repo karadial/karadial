@@ -1,6 +1,6 @@
 {
   "name": "karadial",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "description": "Speed dial new tab page for bookmarks from your self-hosted Karakeep instance.",
   "license": "MIT",

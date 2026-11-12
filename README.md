@@ -8,7 +8,8 @@ Karakeep or Speed Dial 2.
 
 > **Status:** early development. The options page and the new tab page work:
 > pages from your Karakeep lists, tiles with preview images, offline cache,
-> search on your pages and across all of Karakeep.
+> search on your pages and across all of Karakeep, keyboard navigation, light
+> and dark theme.
 
 ## Targets
 
