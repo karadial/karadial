@@ -6,8 +6,9 @@ for bookmarks stored in your self-hosted [Karakeep](https://karakeep.app) instan
 KaraDial is an independent open-source project. It is not affiliated with
 Karakeep or Speed Dial 2.
 
-> **Status:** early development. The extension currently builds and installs,
-> but only shows placeholder pages.
+> **Status:** early development. The options page and the speed dial itself
+> work: pages from your Karakeep lists, tiles with preview images, offline
+> cache. Search is not built yet.
 
 ## Targets
 
