@@ -16,10 +16,30 @@ Karakeep or Speed Dial 2.
 - Firefox 140 or later (and Firefox based browsers such as Zen), Manifest V3
 - Chrome and Edge, Manifest V3
 
+## What KaraDial changes in your browser
+
+KaraDial replaces the new tab page. This is its only purpose, and it changes
+nothing else: not the homepage, not the search engine, no other page.
+
+Firefox asks once whether you want to keep the new tab page when it first
+opens. To get the browser's own new tab page back, disable or remove KaraDial
+in `about:addons`.
+
+The new tab page is part of the extension. It is never loaded from a server.
+
 ## Privacy
 
 KaraDial talks only to the Karakeep instance you configure. It contains no
 analytics, no telemetry and no remote code.
+
+What it sends to your Karakeep instance, and nowhere else:
+
+- your API key, with every request
+- requests for your lists, their bookmarks and their preview images
+- the search terms you enter, when you search all of Karakeep
+
+Nothing is sent to the developers of KaraDial or to the bookmarked sites.
+Settings, the API key and the cache stay in the browser's local storage.
 
 ## Building from source
 

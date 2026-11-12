@@ -9,7 +9,8 @@ export default defineConfig({
   imports: false,
   manifest: ({ browser }) => ({
     name: 'KaraDial',
-    description: 'Speed dial new tab page for bookmarks from your self-hosted Karakeep instance.',
+    description:
+      'Replaces your new tab page with a speed dial for the bookmarks in your self-hosted Karakeep instance.',
     permissions: ['storage'],
     // Nothing is granted at install. The options page requests access to the
     // one configured Karakeep host at runtime, which needs a covering pattern.
