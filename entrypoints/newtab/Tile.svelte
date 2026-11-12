@@ -70,6 +70,7 @@
 <a
   bind:this={element}
   class="tile"
+  data-tile
   href={tile.url}
   rel="noopener noreferrer"
   referrerpolicy="no-referrer"

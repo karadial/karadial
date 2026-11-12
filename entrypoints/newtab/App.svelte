@@ -12,6 +12,7 @@
     uniqueTiles,
     type Tile as TileData,
   } from '@/lib/dial/model';
+  import { neighbour, type Direction } from '@/lib/dial/navigation';
   import { loadFromCache, needsRefresh, refreshFromServer, type DialData } from '@/lib/dial/sync';
   import { shrinkImage } from '@/lib/dial/thumbnail';
   import { createKarakeepClient, type KarakeepClient } from '@/lib/karakeep/client';
@@ -63,6 +64,7 @@
   let problem = $state<Problem | null>(null);
   let activeId = $state<string | null>(null);
   let tablist = $state<HTMLElement>();
+  let main = $state<HTMLElement>();
   let searchInput = $state<HTMLInputElement>();
   let query = $state('');
   /** Typing filters the cached pages. Enter or the toggle asks the server. */
@@ -325,14 +327,74 @@
     );
   }
 
+  const DIRECTIONS: Record<string, Direction> = {
+    ArrowLeft: 'left',
+    ArrowRight: 'right',
+    ArrowUp: 'up',
+    ArrowDown: 'down',
+    Home: 'first',
+    End: 'last',
+  };
+
+  /** The tiles on screen, in reading order. */
+  function visibleTiles(): HTMLElement[] {
+    const tiles = main?.querySelectorAll<HTMLElement>('[data-tile]') ?? [];
+    return [...tiles].filter((tile) => tile.offsetParent !== null);
+  }
+
+  function focusFirstTile(): boolean {
+    const first = visibleTiles()[0];
+    first?.focus();
+    return first !== undefined;
+  }
+
   /**
-   * Keys pressed outside of a text field: `/` focuses the search, 1 to 9
-   * switch pages, any other character starts a search.
+   * Arrow keys, Home and End move the focus across tiles. Enter and
+   * Ctrl/Cmd+Enter then open the focused link, which the browser does itself.
+   * Returns whether the key was used.
+   */
+  function moveAcrossTiles(event: KeyboardEvent): boolean {
+    const direction = DIRECTIONS[event.key];
+    if (!direction || event.shiftKey || !(event.target instanceof Element)) return false;
+    const tile = event.target.closest<HTMLElement>('[data-tile]');
+    // From anywhere else, for example the tab bar, down enters the tiles.
+    if (!tile) return direction === 'down' && focusFirstTile();
+
+    const tiles = visibleTiles();
+    const boxes = tiles.map((element) => element.getBoundingClientRect());
+    const target = neighbour(boxes, tiles.indexOf(tile), direction);
+    if (target !== null) tiles[target]?.focus();
+    // Above the first row sits the search field.
+    else if (direction === 'up') searchInput?.focus();
+    return true;
+  }
+
+  /** Ctrl+Left and Ctrl+Right switch pages. */
+  function switchPage(event: KeyboardEvent): boolean {
+    const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
+    if (step === 0 || pages.length === 0) return false;
+    // Inside the tab bar onTabKeydown does it and moves the focus along.
+    if (event.target instanceof Node && tablist?.contains(event.target)) return false;
+    const index = pages.findIndex((page) => page.listId === active?.listId);
+    showPage(pages[(index + step + pages.length) % pages.length]!.listId);
+    return true;
+  }
+
+  /**
+   * Keys pressed outside of a text field: `/` focuses the search, 1 to 9 and
+   * Ctrl+Left/Right switch pages, arrow keys move across tiles, any other
+   * character starts a search.
    */
   function onKeydown(event: KeyboardEvent) {
-    if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
-    if (view !== 'dial' || isTyping(event.target)) return;
-    if (event.key === '/') {
+    if (event.isComposing || view !== 'dial' || isTyping(event.target)) return;
+    if (event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) {
+      if (switchPage(event)) event.preventDefault();
+      return;
+    }
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if (moveAcrossTiles(event)) {
+      event.preventDefault();
+    } else if (event.key === '/') {
       event.preventDefault();
       searchInput?.focus();
       searchInput?.select();
@@ -356,6 +418,8 @@
       event.preventDefault();
       if (query) setQuery('');
       else searchInput?.blur();
+    } else if (event.key === 'ArrowDown' && !event.shiftKey) {
+      if (focusFirstTile()) event.preventDefault();
     }
   }
 
@@ -368,6 +432,7 @@
     else if (event.key === 'Home') target = 0;
     else if (event.key === 'End') target = pages.length - 1;
     else return;
+    if (event.altKey || event.metaKey || event.shiftKey) return;
     event.preventDefault();
     showPage(pages[target]!.listId);
     tablist?.querySelectorAll<HTMLElement>('[role="tab"]')[target]?.focus();
@@ -473,7 +538,7 @@
     </p>
   {/if}
 
-  <main>
+  <main bind:this={main}>
     {#if term}
       <section class="results" aria-labelledby="results-heading">
         <div class="results-head">
