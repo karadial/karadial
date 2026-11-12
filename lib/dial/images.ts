@@ -21,6 +21,8 @@ export interface ImageLoader {
    * (not cached and not downloadable, or not an image). Never rejects.
    */
   load(assetId: string): Promise<string | null>;
+  /** The object URL of an image that `load` already resolved, without waiting. */
+  peek(assetId: string): string | null;
   /** Cancels downloads and releases all object URLs. */
   dispose(): void;
 }
@@ -41,7 +43,7 @@ export function createImageLoader(options: ImageLoaderOptions): ImageLoader {
 
   const controller = new AbortController();
   const results = new Map<string, Promise<string | null>>();
-  const urls: string[] = [];
+  const urls = new Map<string, string>();
   const waiting: (() => void)[] = [];
   let active = 0;
 
@@ -76,7 +78,7 @@ export function createImageLoader(options: ImageLoaderOptions): ImageLoader {
       const blob = cached && isImage(cached) ? cached : await download(assetId);
       if (!blob || controller.signal.aborted) return null;
       const url = createObjectURL(blob);
-      urls.push(url);
+      urls.set(assetId, url);
       return url;
     } catch {
       return null;
@@ -92,9 +94,11 @@ export function createImageLoader(options: ImageLoaderOptions): ImageLoader {
       }
       return result;
     },
+    peek: (assetId) => urls.get(assetId) ?? null,
     dispose() {
       controller.abort();
-      urls.splice(0).forEach(revokeObjectURL);
+      urls.forEach(revokeObjectURL);
+      urls.clear();
       results.clear();
     },
   };

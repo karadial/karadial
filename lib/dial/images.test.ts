@@ -34,6 +34,8 @@ describe('createImageLoader', () => {
     const [first, second] = await Promise.all([loader.load('a'), loader.load('a')]);
     expect(first).toBe('blob:1');
     expect(second).toBe('blob:1');
+    expect(loader.peek('a')).toBe('blob:1');
+    expect(loader.peek('b')).toBeNull();
     expect(fetchAsset).toHaveBeenCalledTimes(1);
     expect(await cache.getImage('a')).not.toBeNull();
   });

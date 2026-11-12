@@ -7,7 +7,7 @@ import type { KarakeepClient } from '@/lib/karakeep/client';
 import { KarakeepError } from '@/lib/karakeep/errors';
 import type { Bookmark, KarakeepList } from '@/lib/karakeep/types';
 
-import { loadFromCache, refreshFromServer } from './sync';
+import { loadFromCache, MAX_AGE_MS, needsRefresh, refreshFromServer, type DialData } from './sync';
 
 const list = (id: string, parentId: string | null = null): KarakeepList => ({
   id,
@@ -125,5 +125,53 @@ describe('dial sync', () => {
       kind: 'unauthorized',
     });
     expect((await cache.getBookmarks('tools'))?.bookmarks).toEqual([bookmark('tools-1')]);
+  });
+});
+
+describe('needsRefresh', () => {
+  const now = 1_000_000;
+  const data = (overrides: Partial<DialData> = {}): DialData => ({
+    lists,
+    bookmarks: new Map([
+      ['work', []],
+      ['tools', []],
+    ]),
+    fetchedAt: now - 1000,
+    ...overrides,
+  });
+
+  it('is false for fresh, complete data', () => {
+    expect(needsRefresh(data(), ['work'], now)).toBe(false);
+  });
+
+  it('is true when nothing is cached', () => {
+    expect(needsRefresh(data({ fetchedAt: null }), ['work'], now)).toBe(true);
+  });
+
+  it('is true when the data is too old', () => {
+    expect(needsRefresh(data({ fetchedAt: now - MAX_AGE_MS - 1 }), ['work'], now)).toBe(true);
+  });
+
+  it('is true when a needed list has no cached bookmarks', () => {
+    expect(needsRefresh(data(), ['work', 'home'], now)).toBe(true);
+  });
+
+  it('is true when a selected list is unknown', () => {
+    expect(needsRefresh(data(), ['work', 'new'], now)).toBe(true);
+  });
+});
+
+describe('refreshFromServer with a failing cache', () => {
+  it('still returns the fresh data', async () => {
+    const cache = await openCache('https://keep.example.com');
+    cache.putLists = async () => {
+      throw new Error('quota');
+    };
+    cache.putBookmarks = async () => {
+      throw new Error('quota');
+    };
+    const result = await refreshFromServer(fakeClient(), cache, ['home']);
+    expect([...result.bookmarks.keys()]).toEqual(['home']);
+    cache.close();
   });
 });
