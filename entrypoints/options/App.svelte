@@ -195,7 +195,7 @@
 </script>
 
 <main>
-  <a class="back" href="/newtab.html"><span aria-hidden="true">←</span> Back to speed dial</a>
+  <a class="back" href="/newtab.html"><span aria-hidden="true">←</span> Back to bookmarks</a>
   <h1>KaraDial Options</h1>
 
   {#if loaded}

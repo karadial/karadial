@@ -59,7 +59,7 @@
 <section aria-labelledby="pages-heading">
   <h2 id="pages-heading">Pages</h2>
   <p class="hint intro">
-    Each selected list becomes one page of the speed dial. Lists inside a selected list are shown as
+    Each selected list becomes one page on your new tab. Lists inside a selected list are shown as
     groups on its page. Changes are saved right away.
   </p>
 
