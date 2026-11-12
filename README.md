@@ -99,6 +99,32 @@ Chrome or Edge:
 The dev commands do not open a browser. Load the dev output directory manually
 as described above.
 
+## Releases
+
+Pushing a tag `v<version>` runs `.github/workflows/release.yml`. The tag must
+match the version in `package.json`. The workflow
+
+1. runs lint, type check and tests,
+2. builds the archives for Firefox and Chrome,
+3. has the Firefox build signed by addons.mozilla.org for self-distribution
+   (channel "unlisted", not listed in the store),
+4. creates a GitHub Release with the archives and the signed `.xpi`.
+
+It needs two repository secrets (Settings, Secrets and variables, Actions).
+Both come from the addons.mozilla.org Developer Hub, "Manage API Keys":
+
+| Secret           | Value                                 |
+| ---------------- | ------------------------------------- |
+| `AMO_JWT_ISSUER` | "JWT issuer", for example `user:1:23` |
+| `AMO_JWT_SECRET` | "JWT secret"                          |
+
+addons.mozilla.org signs each version number only once. If a release fails
+after signing, the signed `.xpi` is still attached to the workflow run as an
+artifact; otherwise raise the version and tag again.
+
+To install a release in Firefox or Zen, open the signed `.xpi` from the
+release page in the browser. The signed build does not update itself.
+
 ## License
 
 [MIT](LICENSE)

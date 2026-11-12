@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  # Needed to create the GitHub Release.
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Check that the tag matches package.json
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match version $version in package.json"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+
+      # `wxt zip` builds first, so no separate build step is needed.
+      - run: npm run zip
+      - run: npm run zip:firefox
+
+      # Signs the Firefox build for self-distribution (not listed on
+      # addons.mozilla.org) and downloads the signed .xpi. AMO signs every
+      # version number only once, so a failed release needs a new version.
+      # web-ext is pinned and only used here, it is not a project dependency.
+      - name: Sign the Firefox build on addons.mozilla.org
+        env:
+          WEB_EXT_API_KEY: ${{ secrets.AMO_JWT_ISSUER }}
+          WEB_EXT_API_SECRET: ${{ secrets.AMO_JWT_SECRET }}
+        run: |
+          npx --yes web-ext@10.8.0 sign \
+            --channel unlisted \
+            --source-dir .output/firefox-mv3 \
+            --artifacts-dir .output/signed \
+            --upload-source-code ".output/karadial-$VERSION-sources.zip"
+          mv .output/signed/*.xpi ".output/karadial-$VERSION-firefox-signed.xpi"
+
+      # Kept even if the release step fails: the version cannot be signed twice.
+      - uses: actions/upload-artifact@v7
+        with:
+          name: karadial-release
+          path: |
+            .output/*.zip
+            .output/*.xpi
+          include-hidden-files: true
+          if-no-files-found: error
+
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --verify-tag \
+            --title "KaraDial $VERSION" \
+            --generate-notes \
+            .output/*.zip .output/*.xpi
