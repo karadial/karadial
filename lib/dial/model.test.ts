@@ -2,7 +2,14 @@ import { describe, expect, it } from 'vitest';
 
 import type { Bookmark, KarakeepList } from '@/lib/karakeep/types';
 
-import { buildPages, imageAssetIds, listIdsForPages, toTile } from './model';
+import {
+  appendTiles,
+  buildPages,
+  imageAssetIds,
+  listIdsForPages,
+  toTile,
+  uniqueTiles,
+} from './model';
 
 const list = (id: string, parentId: string | null = null): KarakeepList => ({
   id,
@@ -32,12 +39,15 @@ const lists = [list('work'), list('tools', 'work'), list('editors', 'tools'), li
 
 describe('toTile', () => {
   it('builds a tile from a link bookmark', () => {
-    expect(toTile(bookmark('a', { imageAssetId: 'img', screenshotAssetId: 'shot' }))).toEqual({
+    expect(
+      toTile(bookmark('a', { imageAssetId: 'img', screenshotAssetId: 'shot', tags: ['x'] })),
+    ).toEqual({
       id: 'a',
       url: 'https://www.example.com/a',
       title: 'Title a',
       host: 'example.com',
       imageAssetId: 'img',
+      tags: ['x'],
     });
   });
 
@@ -94,6 +104,27 @@ describe('buildPages', () => {
     const sparse = new Map([['editors', [bookmark('e1')]]]);
     const [page] = buildPages(lists, ['work'], sparse);
     expect(page!.groups.map((g) => g.name)).toEqual(['TOOLS / EDITORS']);
+  });
+});
+
+describe('appendTiles', () => {
+  it('skips bookmarks without a tile and bookmarks already listed', () => {
+    const first = appendTiles([], [bookmark('a'), bookmark('n', { url: null }), bookmark('a')]);
+    expect(first.map((tile) => tile.id)).toEqual(['a']);
+    const second = appendTiles(first, [bookmark('a'), bookmark('b')]);
+    expect(second.map((tile) => tile.id)).toEqual(['a', 'b']);
+  });
+});
+
+describe('uniqueTiles', () => {
+  it('lists every tile once, in page order', () => {
+    const bookmarks = new Map([
+      ['work', [bookmark('a'), bookmark('b')]],
+      ['tools', [bookmark('b'), bookmark('c')]],
+      ['home', [bookmark('d'), bookmark('a')]],
+    ]);
+    const tiles = uniqueTiles(buildPages(lists, ['home', 'work'], bookmarks));
+    expect(tiles.map((tile) => tile.id)).toEqual(['d', 'a', 'b', 'c']);
   });
 });
 

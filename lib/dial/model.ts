@@ -11,6 +11,8 @@ export interface Tile {
   host: string;
   /** Karakeep asset to show as preview, banner image first, then screenshot. */
   imageAssetId: string | null;
+  /** Only used by the search. */
+  tags: string[];
 }
 
 export interface DialGroup {
@@ -70,7 +72,24 @@ export function toTile(bookmark: Bookmark): Tile | null {
     title: bookmark.title?.trim() || host,
     host,
     imageAssetId: bookmark.imageAssetId ?? bookmark.screenshotAssetId,
+    tags: bookmark.tags,
   };
+}
+
+/**
+ * Adds the tiles of more bookmarks to a result list, for example the next
+ * page of a search. Bookmarks without a tile or already listed are skipped.
+ */
+export function appendTiles(tiles: readonly Tile[], bookmarks: readonly Bookmark[]): Tile[] {
+  const seen = new Set(tiles.map((tile) => tile.id));
+  const result = [...tiles];
+  for (const bookmark of bookmarks) {
+    const tile = toTile(bookmark);
+    if (!tile || seen.has(tile.id)) continue;
+    seen.add(tile.id);
+    result.push(tile);
+  }
+  return result;
 }
 
 const tilesOf = (bookmarks: BookmarksByList, listId: string): Tile[] =>
@@ -118,13 +137,25 @@ export function buildPages(
   return pages;
 }
 
+/**
+ * Every tile of the given pages once, in page order. A bookmark that sits in
+ * several lists appears where it comes first.
+ */
+export function uniqueTiles(pages: readonly DialPage[]): Tile[] {
+  const tiles = new Map<string, Tile>();
+  for (const page of pages) {
+    for (const tile of [...page.tiles, ...page.groups.flatMap((group) => group.tiles)]) {
+      if (!tiles.has(tile.id)) tiles.set(tile.id, tile);
+    }
+  }
+  return [...tiles.values()];
+}
+
 /** Every Karakeep image the pages show, for cache pruning. */
 export function imageAssetIds(pages: readonly DialPage[]): string[] {
   const ids = new Set<string>();
-  for (const page of pages) {
-    for (const tile of [...page.tiles, ...page.groups.flatMap((group) => group.tiles)]) {
-      if (tile.imageAssetId !== null) ids.add(tile.imageAssetId);
-    }
+  for (const tile of uniqueTiles(pages)) {
+    if (tile.imageAssetId !== null) ids.add(tile.imageAssetId);
   }
   return [...ids];
 }
