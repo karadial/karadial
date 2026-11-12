@@ -1,5 +1,7 @@
 import { defineConfig } from 'wxt';
 
+import { GECKO_ID, UPDATE_URL } from './lib/release/firefox';
+
 // See https://wxt.dev/api/reference/wxt/interfaces/InlineConfig.html
 export default defineConfig({
   // WXT defaults to MV2 for Firefox. KaraDial is MV3 on every browser.
@@ -23,7 +25,10 @@ export default defineConfig({
     ...(browser === 'firefox' && {
       browser_specific_settings: {
         gecko: {
-          id: 'karadial@karadial.github.io',
+          id: GECKO_ID,
+          // Self-distributed builds update from the project website. A build
+          // listed on addons.mozilla.org must not carry this key.
+          update_url: UPDATE_URL,
           // First Firefox release with built-in data collection consent.
           strict_min_version: '140.0',
           // Sent to the user's own Karakeep instance and nowhere else: the API

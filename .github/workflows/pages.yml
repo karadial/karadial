@@ -1,0 +1,59 @@
+name: Pages
+
+# Publishes `site/` and the Firefox update manifest to GitHub Pages.
+# In the repository settings, Pages must use the source "GitHub Actions".
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'site/**'
+      - 'scripts/write-update-manifest.ts'
+      - 'lib/release/**'
+      - '.github/workflows/pages.yml'
+  # After a release the update manifest has to list the new version. This
+  # runs on the default branch, which is the only one allowed to deploy.
+  workflow_run:
+    workflows:
+      - Release
+    types:
+      - completed
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+
+      # No `npm ci`: the script has no dependencies and Node runs TypeScript itself.
+      - name: Write the update manifest from the releases
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/write-update-manifest.ts site/updates.json
+
+      - run: cp public/icon/128.png site/icon.png
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site
+
+      - id: deployment
+        uses: actions/deploy-pages@v5
