@@ -10,6 +10,8 @@ export type KarakeepErrorKind =
   | 'forbidden'
   /** 404: most likely not a Karakeep instance at this URL. */
   | 'not-found'
+  /** 502, 503, 504: a reverse proxy answered, but Karakeep behind it is down. */
+  | 'unavailable'
   /** Any other HTTP error status. */
   | 'http'
   /** A success status, but the body is not what the Karakeep API returns. */

@@ -50,6 +50,8 @@
     forbidden: 'The API key is valid but may not read lists. Give it read access.',
     'not-found':
       'No Karakeep API found at this address. Enter only the base address, without a page path such as /signin.',
+    unavailable:
+      'A proxy answered, but Karakeep behind it did not. Check that the Karakeep server is running.',
     http: 'The instance answered with an error.',
     'invalid-response':
       'The answer does not look like Karakeep. Check that the address points to your Karakeep instance.',

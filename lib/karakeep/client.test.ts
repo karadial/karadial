@@ -64,7 +64,9 @@ describe('testConnection', () => {
     [403, 'forbidden'],
     [404, 'not-found'],
     [500, 'http'],
-    [502, 'http'],
+    [502, 'unavailable'],
+    [503, 'unavailable'],
+    [504, 'unavailable'],
   ] as const)('maps HTTP %i to %s', async (status, kind) => {
     const fetchMock = vi.fn<typeof fetch>(async () => new Response('nope', { status }));
     const error = await failure(clientWith(fetchMock).testConnection());

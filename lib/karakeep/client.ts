@@ -91,6 +91,9 @@ export function createKarakeepClient(options: KarakeepClientOptions): KarakeepCl
     if (response.status === 401) throw new KarakeepError('unauthorized', 401);
     if (response.status === 403) throw new KarakeepError('forbidden', 403);
     if (response.status === 404) throw new KarakeepError('not-found', 404);
+    if (response.status >= 502 && response.status <= 504) {
+      throw new KarakeepError('unavailable', response.status);
+    }
     if (!response.ok) throw new KarakeepError('http', response.status);
     return response;
   }

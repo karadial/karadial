@@ -291,6 +291,7 @@
     switch (kind) {
       case 'network':
       case 'timeout':
+      case 'unavailable':
         return `Karakeep at ${host} is not reachable.`;
       case 'unauthorized':
         return 'Karakeep rejected the API key. Check it in the options.';
@@ -306,6 +307,7 @@
     switch (kind) {
       case 'network':
       case 'timeout':
+      case 'unavailable':
       case 'unauthorized':
       case 'forbidden':
         return problemText(kind);
