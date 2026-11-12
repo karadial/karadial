@@ -25,6 +25,7 @@
   } from '@/lib/settings/connection';
   import { clearPageListIds } from '@/lib/settings/pages';
 
+  import AppearanceSection from './AppearanceSection.svelte';
   import PagesSection from './PagesSection.svelte';
 
   type TestState =
@@ -312,5 +313,7 @@
         {/key}
       {/if}
     {/if}
+
+    <AppearanceSection />
   {/if}
 </main>
