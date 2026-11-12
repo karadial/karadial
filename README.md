@@ -38,7 +38,9 @@ What it sends to your Karakeep instance, and nowhere else:
 - requests for your lists, their bookmarks and their preview images
 - the search terms you enter, when you search all of Karakeep
 
-Nothing is sent to the developers of KaraDial or to the bookmarked sites.
+Firefox therefore lists "authentication information" and "search terms" when
+you install KaraDial. Nothing is sent to the developers of KaraDial or to the
+bookmarked sites.
 Settings, the API key and the cache stay in the browser's local storage.
 
 ## Building from source

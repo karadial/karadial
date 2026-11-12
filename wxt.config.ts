@@ -26,7 +26,9 @@ export default defineConfig({
           id: 'karadial@karadial.github.io',
           // First Firefox release with built-in data collection consent.
           strict_min_version: '140.0',
-          data_collection_permissions: { required: ['none'] },
+          // Sent to the user's own Karakeep instance and nowhere else: the API
+          // key with every request, search terms for the server side search.
+          data_collection_permissions: { required: ['authenticationInfo', 'searchTerms'] },
         },
       },
     }),
