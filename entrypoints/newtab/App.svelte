@@ -5,13 +5,20 @@
   import { openCache, type Cache } from '@/lib/cache/db';
   import { createMemoryCache } from '@/lib/cache/memory';
   import { createImageLoader, type ImageLoader } from '@/lib/dial/images';
-  import { buildPages, imageAssetIds } from '@/lib/dial/model';
+  import {
+    buildPages,
+    imageAssetIds,
+    appendTiles,
+    uniqueTiles,
+    type Tile as TileData,
+  } from '@/lib/dial/model';
   import { loadFromCache, needsRefresh, refreshFromServer, type DialData } from '@/lib/dial/sync';
   import { shrinkImage } from '@/lib/dial/thumbnail';
   import { createKarakeepClient, type KarakeepClient } from '@/lib/karakeep/client';
   import { KarakeepError, type KarakeepErrorKind } from '@/lib/karakeep/errors';
   import { hasHostPermission, onHostPermissionChanged } from '@/lib/permissions/host';
   import { getConnection, onConnectionChanged } from '@/lib/settings/connection';
+  import { createSearchIndex } from '@/lib/search/fuzzy';
   import { getPageListIds, onPageListIdsChanged } from '@/lib/settings/pages';
 
   import Tile from './Tile.svelte';
@@ -29,6 +36,21 @@
   type View = 'loading' | 'unconfigured' | 'no-pages' | 'dial';
   type Problem = KarakeepErrorKind | 'unknown';
 
+  /** State of the server side search. */
+  interface Remote {
+    /** The search these results belong to, or are being loaded for. */
+    term: string;
+    tiles: TileData[];
+    nextCursor: string | null;
+    busy: boolean;
+    problem: Problem | null;
+  }
+
+  /** Upper bound for local matches, so every keystroke renders fast. */
+  const LOCAL_LIMIT = 120;
+  /** Pause after the last keystroke before the server is asked. */
+  const SERVER_DELAY_MS = 350;
+
   const EMPTY: DialData = { lists: [], bookmarks: new Map(), fetchedAt: null };
 
   let view = $state<View>('loading');
@@ -41,12 +63,22 @@
   let problem = $state<Problem | null>(null);
   let activeId = $state<string | null>(null);
   let tablist = $state<HTMLElement>();
+  let searchInput = $state<HTMLInputElement>();
+  let query = $state('');
+  /** Typing filters the cached pages. Enter or the toggle asks the server. */
+  let scope = $state<'local' | 'server'>('local');
+  let remote = $state.raw<Remote | null>(null);
 
   let session: Session | null = null;
+  let remoteAbort: AbortController | null = null;
+  let remoteTimer: ReturnType<typeof setTimeout> | undefined;
 
   const pages = $derived(buildPages(data.lists, pageIds, data.bookmarks));
   const active = $derived(pages.find((page) => page.listId === activeId) ?? pages[0] ?? null);
   const hasData = $derived(data.fetchedAt !== null);
+  const term = $derived(query.trim());
+  const searchIndex = $derived(createSearchIndex(uniqueTiles(pages), (tile) => tile));
+  const localHits = $derived(term ? searchIndex.search(term, LOCAL_LIMIT) : []);
   const savedAt = $derived(
     data.fetchedAt === null
       ? ''
@@ -81,6 +113,7 @@
     if (superseded()) return;
     if (!connection || ids.length === 0) {
       release(previous);
+      resetRemote();
       loader = null;
       data = EMPTY;
       refreshing = false;
@@ -118,6 +151,8 @@
     problem = null;
     view = 'dial';
     release(previous);
+    // Results of the previous configuration mean nothing now.
+    resetRemote();
 
     if (needsRefresh(cached, ids)) await refresh();
   }
@@ -145,6 +180,90 @@
     }
   }
 
+  function resetRemote() {
+    clearTimeout(remoteTimer);
+    remoteAbort?.abort();
+    remoteAbort = null;
+    remote = null;
+    scope = 'local';
+  }
+
+  /**
+   * Asks Karakeep for the current search. With `more`, loads the next page of
+   * the results already shown.
+   */
+  async function searchServer(more = false) {
+    const current = session;
+    const wanted = term;
+    if (!current || !wanted) return;
+    const base = more && remote?.term === wanted && !remote.busy ? remote : null;
+    if (more && base?.nextCursor == null) return;
+
+    clearTimeout(remoteTimer);
+    remoteAbort?.abort();
+    const abort = new AbortController();
+    remoteAbort = abort;
+    // What is on screen stays there until the answer arrives.
+    remote = {
+      term: wanted,
+      tiles: remote?.tiles ?? [],
+      nextCursor: null,
+      busy: true,
+      problem: null,
+    };
+    const known = base?.tiles ?? [];
+    try {
+      // Without the host permission the request cannot leave the browser.
+      if (!current.client) throw new KarakeepError('network');
+      const page = await current.client.searchBookmarks(wanted, {
+        cursor: base?.nextCursor,
+        signal: AbortSignal.any([abort.signal, current.controller.signal]),
+      });
+      if (abort.signal.aborted || session !== current) return;
+      remote = {
+        term: wanted,
+        tiles: appendTiles(known, page.bookmarks),
+        nextCursor: page.nextCursor,
+        busy: false,
+        problem: null,
+      };
+    } catch (error) {
+      if (abort.signal.aborted || session !== current) return;
+      remote = {
+        term: wanted,
+        tiles: known,
+        nextCursor: base?.nextCursor ?? null,
+        busy: false,
+        problem: error instanceof KarakeepError ? error.kind : 'unknown',
+      };
+    }
+  }
+
+  function setQuery(value: string) {
+    query = value;
+    clearTimeout(remoteTimer);
+    if (!value.trim()) resetRemote();
+    else if (scope === 'server')
+      remoteTimer = setTimeout(() => void searchServer(), SERVER_DELAY_MS);
+  }
+
+  function searchLocal() {
+    clearTimeout(remoteTimer);
+    scope = 'local';
+  }
+
+  function searchEverything() {
+    if (!term) return;
+    scope = 'server';
+    // Coming back from the local results, the answer may already be there.
+    if (remote?.term !== term || remote.problem) void searchServer();
+  }
+
+  function showPage(listId: string) {
+    activeId = listId;
+    if (query) setQuery('');
+  }
+
   function refreshIfStale() {
     if (document.visibilityState !== 'visible' || view !== 'dial') return;
     if (needsRefresh(data, pageIds)) void refresh();
@@ -162,6 +281,7 @@
     return () => {
       unsubscribe.forEach((off) => off());
       document.removeEventListener('visibilitychange', refreshIfStale);
+      resetRemote();
       release(session);
       session = null;
     };
@@ -182,6 +302,18 @@
   }
 
   // Same tab, so the options page can lead back here and the browser's back button works.
+  function searchProblemText(kind: Problem): string {
+    switch (kind) {
+      case 'network':
+      case 'timeout':
+      case 'unauthorized':
+      case 'forbidden':
+        return problemText(kind);
+      default:
+        return 'Karakeep could not run this search.';
+    }
+  }
+
   const openOptions = () => location.assign(browser.runtime.getURL('/options.html'));
 
   function isTyping(target: EventTarget | null): boolean {
@@ -191,14 +323,38 @@
     );
   }
 
-  /** Number keys 1 to 9 switch pages. */
+  /**
+   * Keys pressed outside of a text field: `/` focuses the search, 1 to 9
+   * switch pages, any other character starts a search.
+   */
   function onKeydown(event: KeyboardEvent) {
-    if (event.ctrlKey || event.metaKey || event.altKey || isTyping(event.target)) return;
-    if (!/^[1-9]$/.test(event.key)) return;
-    const page = pages[Number(event.key) - 1];
-    if (!page) return;
-    event.preventDefault();
-    activeId = page.listId;
+    if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
+    if (view !== 'dial' || isTyping(event.target)) return;
+    if (event.key === '/') {
+      event.preventDefault();
+      searchInput?.focus();
+      searchInput?.select();
+    } else if (/^[1-9]$/.test(event.key)) {
+      const page = pages[Number(event.key) - 1];
+      if (!page) return;
+      event.preventDefault();
+      showPage(page.listId);
+    } else if (event.key.length === 1 && event.key !== ' ') {
+      // Not prevented: the focus moves first, so the character lands in the field.
+      searchInput?.focus();
+    }
+  }
+
+  function onSearchKeydown(event: KeyboardEvent) {
+    if (event.isComposing) return;
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      searchEverything();
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      if (query) setQuery('');
+      else searchInput?.blur();
+    }
   }
 
   /** Arrow keys inside the tab bar, as usual for tabs. */
@@ -211,14 +367,14 @@
     else if (event.key === 'End') target = pages.length - 1;
     else return;
     event.preventDefault();
-    activeId = pages[target]!.listId;
+    showPage(pages[target]!.listId);
     tablist?.querySelectorAll<HTMLElement>('[role="tab"]')[target]?.focus();
   }
 </script>
 
 <svelte:window onkeydown={onKeydown} />
 
-{#snippet grid(tiles: (typeof pages)[number]['tiles'])}
+{#snippet grid(tiles: TileData[])}
   <div class="grid">
     {#each tiles as tile (tile.id)}
       <Tile {tile} {loader} />
@@ -251,6 +407,31 @@
   )}
 {:else if view === 'dial'}
   <header>
+    <div class="top">
+      <div class="search" role="search">
+        <input
+          bind:this={searchInput}
+          type="search"
+          aria-label="Search bookmarks"
+          placeholder="Search bookmarks"
+          title="Press / to search, Enter to search all of Karakeep"
+          autocomplete="off"
+          spellcheck="false"
+          enterkeyhint="search"
+          value={query}
+          oninput={(event) => setQuery(event.currentTarget.value)}
+          onkeydown={onSearchKeydown}
+        />
+      </div>
+      <div class="tools">
+        {#if permitted}
+          <button type="button" onclick={() => void refresh()} disabled={refreshing}>
+            {refreshing ? 'Refreshing...' : 'Refresh'}
+          </button>
+        {/if}
+        <button type="button" onclick={openOptions}>Options</button>
+      </div>
+    </div>
     <div
       class="tabs"
       role="tablist"
@@ -269,20 +450,12 @@
           aria-controls="page-panel"
           tabindex={selected ? 0 : -1}
           title={index < 9 ? `Press ${index + 1}` : undefined}
-          onclick={() => (activeId = page.listId)}
+          onclick={() => showPage(page.listId)}
         >
           {#if page.icon}<span aria-hidden="true">{page.icon}</span>{/if}
           {page.name}
         </button>
       {/each}
-    </div>
-    <div class="tools">
-      {#if permitted}
-        <button type="button" onclick={() => void refresh()} disabled={refreshing}>
-          {refreshing ? 'Refreshing...' : 'Refresh'}
-        </button>
-      {/if}
-      <button type="button" onclick={openOptions}>Options</button>
     </div>
   </header>
 
@@ -299,7 +472,68 @@
   {/if}
 
   <main>
-    <div id="page-panel" role="tabpanel" aria-labelledby={active ? `tab-${active.listId}` : null}>
+    {#if term}
+      <section class="results" aria-labelledby="results-heading">
+        <div class="results-head">
+          <h2 id="results-heading">Search results</h2>
+          <div class="scope" role="group" aria-label="Search in">
+            <button type="button" aria-pressed={scope === 'local'} onclick={searchLocal}>
+              My pages
+            </button>
+            <button type="button" aria-pressed={scope === 'server'} onclick={searchEverything}>
+              All of Karakeep
+            </button>
+          </div>
+        </div>
+
+        {#if scope === 'local'}
+          {#if localHits.length > 0}
+            {@render grid(localHits)}
+            <p class="note" role="status">
+              {#if localHits.length === LOCAL_LIMIT}Showing the first {LOCAL_LIMIT} matches.{/if}
+              Press Enter to search all of Karakeep.
+            </p>
+          {:else}
+            <p class="empty" role="status">
+              Nothing on your pages matches. Press Enter to search all of Karakeep.
+            </p>
+          {/if}
+        {:else if !permitted}
+          <p class="empty" role="status">
+            KaraDial has no access to {host}. Grant access in the options.
+          </p>
+        {:else if !remote || (remote.busy && remote.tiles.length === 0)}
+          <p class="empty" role="status">Searching Karakeep...</p>
+        {:else if remote.problem && remote.tiles.length === 0}
+          <p class="empty" role="alert">
+            {searchProblemText(remote.problem)}
+            <button type="button" onclick={() => void searchServer()}>Try again</button>
+          </p>
+        {:else if remote.tiles.length === 0}
+          <p class="empty" role="status">Karakeep found no link bookmarks for this search.</p>
+        {:else}
+          {@render grid(remote.tiles)}
+          {#if remote.problem}
+            <p class="note" role="alert">
+              {searchProblemText(remote.problem)}
+              <button type="button" onclick={() => void searchServer(true)}>Try again</button>
+            </p>
+          {:else if remote.nextCursor !== null}
+            <p class="note">
+              <button type="button" onclick={() => void searchServer(true)} disabled={remote.busy}>
+                {remote.busy ? 'Loading...' : 'Show more'}
+              </button>
+            </p>
+          {/if}
+        {/if}
+      </section>
+    {/if}
+    <div
+      id="page-panel"
+      role="tabpanel"
+      aria-labelledby={active ? `tab-${active.listId}` : null}
+      hidden={term !== ''}
+    >
       {#if !hasData}
         {#if !permitted}
           {@render message(
@@ -348,20 +582,58 @@
   }
 
   header {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem 1.5rem;
     padding-top: 1rem;
     padding-bottom: 0.5rem;
   }
 
+  .top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 1.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .search {
+    flex: 1 1 14rem;
+    max-width: 36rem;
+  }
+
+  .search input {
+    width: 100%;
+    padding: 0.55rem 1rem;
+    background: var(--color-surface);
+    color: var(--color-text);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    font: inherit;
+  }
+
+  .search input::placeholder {
+    color: var(--color-text-muted);
+    opacity: 1;
+  }
+
+  .search input:hover {
+    border-color: var(--color-border-strong);
+  }
+
+  .search input:focus-visible {
+    border-color: var(--color-accent);
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+
   .tabs,
-  .tools {
+  .tools,
+  .scope {
     display: flex;
     flex-wrap: wrap;
     gap: 0.25rem;
+  }
+
+  .tools {
+    margin-left: auto;
   }
 
   button {
@@ -394,7 +666,8 @@
     font-size: 1rem;
   }
 
-  [role='tab'][aria-selected='true'] {
+  [role='tab'][aria-selected='true'],
+  .scope [aria-pressed='true'] {
     background: var(--color-surface);
     border-color: var(--color-border);
     color: var(--color-text);
@@ -413,12 +686,15 @@
   }
 
   .banner button,
-  .message button {
+  .message button,
+  .note button,
+  .empty button {
     border-color: var(--color-border-strong);
     color: var(--color-text);
   }
 
-  .banner button {
+  .banner button,
+  .empty button {
     margin-left: 0.5rem;
     padding: 0.15rem 0.6rem;
     font-size: inherit;
@@ -437,6 +713,34 @@
 
   section {
     margin-top: 1.5rem;
+  }
+
+  .results {
+    margin-top: 0;
+  }
+
+  .results-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.25rem 1rem;
+    margin-bottom: 0.4rem;
+  }
+
+  .results-head h2 {
+    margin: 0;
+  }
+
+  .scope button {
+    font-size: 0.8rem;
+  }
+
+  .note {
+    margin: 1.25rem 0 0;
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+    text-align: center;
   }
 
   h2 {
