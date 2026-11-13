@@ -1,8 +1,10 @@
 <script lang="ts">
   import {
     DEFAULT_TILE_LAYOUT,
+    IMAGE_FITS,
     TILE_LAYOUT_LIMITS,
     TILE_SIZES,
+    type ImageFit,
     type TileLayout,
     type TileSize,
   } from '@/lib/settings/appearance';
@@ -13,6 +15,13 @@
     small: 'Small',
     medium: 'Medium',
     large: 'Large',
+  };
+
+  const IMAGE_FIT_LABELS: Record<ImageFit, string> = {
+    'cover-top': 'Fill the tile, keep the top',
+    cover: 'Fill the tile, keep the middle',
+    contain: 'Show the whole image',
+    stretch: 'Stretch to the tile',
   };
 
   const SLIDERS: { key: keyof TileLayout; label: string; unit: string }[] = [
@@ -91,6 +100,41 @@
       </button>
     </div>
   {/if}
+
+  <fieldset>
+    <legend>Preview image</legend>
+    {#each IMAGE_FITS as imageFit (imageFit)}
+      <label class="choice">
+        <input
+          type="radio"
+          name="image-fit"
+          checked={appearance.current.imageFit === imageFit}
+          onchange={() => appearance.update({ imageFit })}
+        />
+        {IMAGE_FIT_LABELS[imageFit]}
+      </label>
+    {/each}
+  </fieldset>
+
+  <fieldset>
+    <legend>Text</legend>
+    <label class="choice">
+      <input
+        type="checkbox"
+        checked={appearance.current.showTitle}
+        onchange={(event) => appearance.update({ showTitle: event.currentTarget.checked })}
+      />
+      Show the title
+    </label>
+    <label class="choice">
+      <input
+        type="checkbox"
+        checked={appearance.current.showAddress}
+        onchange={(event) => appearance.update({ showAddress: event.currentTarget.checked })}
+      />
+      Show the address
+    </label>
+  </fieldset>
 </section>
 
 <style>

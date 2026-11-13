@@ -18,6 +18,9 @@ const CUSTOM: Appearance = {
   tileSize: 'large',
   customLayout: true,
   layout: { columns: 4, spacing: 16, width: 80 },
+  imageFit: 'contain',
+  showTitle: true,
+  showAddress: false,
 };
 
 /** Stands in for the root element. */
@@ -44,6 +47,9 @@ describe('appearance settings', () => {
       theme: 'system',
       tileSize: 'medium',
       customLayout: false,
+      imageFit: 'cover-top',
+      showTitle: true,
+      showAddress: true,
     });
   });
 
@@ -59,10 +65,9 @@ describe('appearance settings', () => {
       ...DEFAULT_APPEARANCE,
       tileSize: 'small',
     });
-    expect(parseAppearance({ theme: 'light', tileSize: 7, customLayout: 'yes' })).toEqual({
-      ...DEFAULT_APPEARANCE,
-      theme: 'light',
-    });
+    expect(
+      parseAppearance({ theme: 'light', tileSize: 7, customLayout: 'yes', imageFit: 'tiled' }),
+    ).toEqual({ ...DEFAULT_APPEARANCE, theme: 'light' });
   });
 
   it('reads settings saved before the custom layout existed', () => {
@@ -115,6 +120,14 @@ describe('applyAppearance', () => {
       '--tile-gap': '16px',
       '--dial-width': '80%',
     });
+  });
+
+  it('marks the image fit and hidden texts', () => {
+    const { root } = fakeRoot();
+    applyAppearance({ ...DEFAULT_APPEARANCE, imageFit: 'stretch', showTitle: false }, root);
+    expect(root.dataset).toEqual({ tileSize: 'medium', tileImage: 'stretch', tileTitle: 'off' });
+    applyAppearance(DEFAULT_APPEARANCE, root);
+    expect(root.dataset).toEqual({ tileSize: 'medium' });
   });
 
   it('removes the custom layout again', () => {

@@ -129,6 +129,20 @@
     background: var(--color-surface);
   }
 
+  /* The image fit chosen in the options, see applyAppearance(). */
+  :global(:root[data-tile-image='cover']) img,
+  :global(:root[data-tile-image='contain']) img {
+    object-position: center;
+  }
+
+  :global(:root[data-tile-image='contain']) img {
+    object-fit: contain;
+  }
+
+  :global(:root[data-tile-image='stretch']) img {
+    object-fit: fill;
+  }
+
   .letter {
     color: #fff;
     font-size: 2.5rem;
@@ -152,6 +166,16 @@
   .host {
     color: var(--color-text-muted);
     font-size: 0.78rem;
+  }
+
+  /* Hidden texts stay in the tooltip of the tile. */
+  :global(:root[data-tile-title='off']) .title,
+  :global(:root[data-tile-address='off']) .host {
+    display: none;
+  }
+
+  :global(:root[data-tile-title='off']) .host {
+    margin-top: 0.45rem;
   }
 
   @media (prefers-reduced-motion: no-preference) {

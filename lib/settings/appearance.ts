@@ -2,9 +2,15 @@ import { browser } from 'wxt/browser';
 
 export const THEMES = ['system', 'light', 'dark'] as const;
 export const TILE_SIZES = ['small', 'medium', 'large'] as const;
+/**
+ * How a preview image fills its tile: cropped from the top, cropped around
+ * the middle, shown whole with bars, or stretched out of proportion.
+ */
+export const IMAGE_FITS = ['cover-top', 'cover', 'contain', 'stretch'] as const;
 
 export type Theme = (typeof THEMES)[number];
 export type TileSize = (typeof TILE_SIZES)[number];
+export type ImageFit = (typeof IMAGE_FITS)[number];
 
 /** A tile grid laid out by the user instead of by a tile size. */
 export interface TileLayout {
@@ -38,6 +44,11 @@ export interface Appearance {
   customLayout: boolean;
   /** Kept while `customLayout` is off, so switching back restores it. */
   layout: TileLayout;
+  imageFit: ImageFit;
+  /** The title below the preview image. */
+  showTitle: boolean;
+  /** The host name below the title. */
+  showAddress: boolean;
 }
 
 export const DEFAULT_APPEARANCE: Appearance = {
@@ -45,6 +56,9 @@ export const DEFAULT_APPEARANCE: Appearance = {
   tileSize: 'medium',
   customLayout: false,
   layout: DEFAULT_TILE_LAYOUT,
+  imageFit: 'cover-top',
+  showTitle: true,
+  showAddress: true,
 };
 
 const STORAGE_KEY = 'appearance';
@@ -67,12 +81,16 @@ function parseTileLayout(value: unknown): TileLayout {
 
 /** Unknown or missing values fall back to the defaults. */
 export function parseAppearance(value: unknown): Appearance {
-  const { theme, tileSize, customLayout, layout } = asRecord(value);
+  const { theme, tileSize, customLayout, layout, imageFit, showTitle, showAddress } =
+    asRecord(value);
   return {
     theme: THEMES.find((known) => known === theme) ?? DEFAULT_APPEARANCE.theme,
     tileSize: TILE_SIZES.find((known) => known === tileSize) ?? DEFAULT_APPEARANCE.tileSize,
     customLayout: customLayout === true,
     layout: parseTileLayout(layout),
+    imageFit: IMAGE_FITS.find((known) => known === imageFit) ?? DEFAULT_APPEARANCE.imageFit,
+    showTitle: showTitle !== false,
+    showAddress: showAddress !== false,
   };
 }
 
@@ -121,6 +139,18 @@ export function applyAppearance(
   for (const [name, value] of Object.entries(properties)) {
     if (appearance.customLayout) root.style.setProperty(name, value);
     else root.style.removeProperty(name);
+  }
+
+  // Only what differs from the standard is marked, like the theme.
+  const marks = {
+    tileImage:
+      appearance.imageFit === DEFAULT_APPEARANCE.imageFit ? undefined : appearance.imageFit,
+    tileTitle: appearance.showTitle ? undefined : 'off',
+    tileAddress: appearance.showAddress ? undefined : 'off',
+  };
+  for (const [name, value] of Object.entries(marks)) {
+    if (value === undefined) delete root.dataset[name];
+    else root.dataset[name] = value;
   }
 }
 
