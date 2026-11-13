@@ -80,6 +80,39 @@
     update(ids);
   }
 
+  /** Index of the row being dragged. */
+  let dragIndex = $state<number | null>(null);
+  /** The order to return to when a drag is cancelled. */
+  let orderBeforeDrag: string[] = [];
+
+  function onDragStart(event: DragEvent, index: number) {
+    if (!event.dataTransfer) return;
+    event.dataTransfer.effectAllowed = 'move';
+    // Firefox starts a drag only when it carries data.
+    event.dataTransfer.setData('text/plain', '');
+    orderBeforeDrag = selected;
+    dragIndex = index;
+  }
+
+  /** The dragged row takes the place of the row under the pointer. Nothing is saved yet. */
+  function onDragOver(event: DragEvent, index: number) {
+    if (dragIndex === null) return;
+    event.preventDefault();
+    if (index === dragIndex) return;
+    const ids = [...selected];
+    ids.splice(index, 0, ...ids.splice(dragIndex, 1));
+    selected = ids;
+    dragIndex = index;
+  }
+
+  function onDragEnd(event: DragEvent) {
+    if (dragIndex === null) return;
+    dragIndex = null;
+    // Escape or a drop outside the list cancels.
+    if (event.dataTransfer?.dropEffect === 'none') selected = orderBeforeDrag;
+    else if (selected.join('\n') !== orderBeforeDrag.join('\n')) update(selected);
+  }
+
   const label = (list: KarakeepList) => (list.icon ? `${list.icon} ${list.name}` : list.name);
 </script>
 
@@ -99,10 +132,26 @@
   {:else if blocked === null}
     {#if selected.length > 0}
       <h3 id="order-heading">Page order</h3>
-      <ol class="order" aria-labelledby="order-heading">
+      <p class="hint">Drag a page to move it, or use the arrows.</p>
+      <!-- The list takes the drop, so letting go between two rows counts too. -->
+      <ol
+        class="order"
+        aria-labelledby="order-heading"
+        ondragover={(event) => {
+          if (dragIndex !== null) event.preventDefault();
+        }}
+        ondrop={(event) => event.preventDefault()}
+      >
         {#each selected as id, index (id)}
           {@const list = byId.get(id)}
-          <li>
+          <li
+            draggable="true"
+            class:dragging={dragIndex === index}
+            ondragstart={(event) => onDragStart(event, index)}
+            ondragover={(event) => onDragOver(event, index)}
+            ondragend={onDragEnd}
+          >
+            <span class="grip" aria-hidden="true">⠿</span>
             <span class="name" class:missing={!list && load.status === 'ok'}>
               {#if list}
                 {label(list)}
@@ -193,6 +242,22 @@
     gap: 0.35rem;
     padding: 0.3rem 0;
     border-bottom: 1px solid var(--color-border);
+  }
+
+  .order {
+    margin-top: 0.5rem;
+  }
+
+  .order li[draggable='true'] {
+    cursor: grab;
+  }
+
+  .order li.dragging {
+    opacity: 0.4;
+  }
+
+  .grip {
+    color: var(--color-text-muted);
   }
 
   .order li:last-child {
