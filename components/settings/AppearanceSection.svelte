@@ -30,4 +30,32 @@
       </label>
     {/each}
   </fieldset>
+
+  <fieldset>
+    <legend>Lists</legend>
+    <label class="choice">
+      <input
+        type="checkbox"
+        checked={appearance.current.showListIcons}
+        onchange={(event) => appearance.update({ showListIcons: event.currentTarget.checked })}
+      />
+      Show the icons of lists on pages and groups
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Privacy</legend>
+    <label class="choice">
+      <input
+        type="checkbox"
+        checked={appearance.current.privacyMode}
+        onchange={(event) => appearance.update({ privacyMode: event.currentTarget.checked })}
+      />
+      Privacy mode
+    </label>
+  </fieldset>
+  <p class="hint">
+    Hides your bookmarks on every new tab, for example while you share your screen. Pressing Esc
+    three times on the new tab page switches it on and off.
+  </p>
 </section>

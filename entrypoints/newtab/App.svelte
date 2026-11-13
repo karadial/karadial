@@ -21,6 +21,7 @@
   import { createSearchIndex } from '@/lib/search/fuzzy';
   import { getPageListIds, onPageListIdsChanged } from '@/lib/settings/pages';
 
+  import { useAppearance } from '@/components/settings/appearance.svelte';
   import type { SectionId } from '@/components/settings/SettingsPanel.svelte';
 
   import SettingsDialog from './SettingsDialog.svelte';
@@ -76,11 +77,17 @@
   /** The section the options dialog shows. It reopens where it was left. */
   let settingsSection = $state<SectionId>('connection');
 
+  const appearance = useAppearance();
+  const privacy = $derived(appearance.current.privacyMode);
+  const showIcons = $derived(appearance.current.showListIcons);
+
   let session: Session | null = null;
   let remoteAbort: AbortController | null = null;
   let remoteTimer: ReturnType<typeof setTimeout> | undefined;
 
-  const pages = $derived(buildPages(data.lists, pageIds, data.bookmarks));
+  const pages = $derived(
+    buildPages(data.lists, pageIds, data.bookmarks, appearance.current.tileOrder),
+  );
   const active = $derived(pages.find((page) => page.listId === activeId) ?? pages[0] ?? null);
   const hasData = $derived(data.fetchedAt !== null);
   const term = $derived(query.trim());
@@ -328,6 +335,21 @@
     settingsOpen = true;
   }
 
+  /** Escape presses that may add up to three in a row. */
+  let escapes: number[] = [];
+  const ESCAPE_WINDOW_MS = 1200;
+
+  /** Three quick presses of Escape switch the privacy mode. Returns whether this was the third. */
+  function countEscape(event: KeyboardEvent): boolean {
+    if (event.key !== 'Escape' || event.repeat) return false;
+    const now = Date.now();
+    escapes = [...escapes.filter((time) => now - time < ESCAPE_WINDOW_MS), now];
+    if (escapes.length < 3) return false;
+    escapes = [];
+    appearance.update({ privacyMode: !privacy });
+    return true;
+  }
+
   function isTyping(target: EventTarget | null): boolean {
     return (
       target instanceof HTMLElement &&
@@ -394,7 +416,13 @@
    * character starts a search.
    */
   function onKeydown(event: KeyboardEvent) {
-    if (event.isComposing || settingsOpen || view !== 'dial' || isTyping(event.target)) return;
+    // In the options dialog Escape closes the dialog and nothing else.
+    if (event.isComposing || settingsOpen) return;
+    if (countEscape(event)) {
+      event.preventDefault();
+      return;
+    }
+    if (privacy || view !== 'dial' || isTyping(event.target)) return;
     if (event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) {
       if (switchPage(event)) event.preventDefault();
       return;
@@ -486,6 +514,17 @@
     false,
     'pages',
   )}
+{:else if view === 'dial' && privacy}
+  <div class="message">
+    <h1>KaraDial</h1>
+    <p>Privacy mode is on and your bookmarks are hidden. Press Esc three times to show them.</p>
+    <div class="actions">
+      <button type="button" onclick={() => appearance.update({ privacyMode: false })}>
+        Show bookmarks
+      </button>
+      <button type="button" onclick={() => openOptions()}>Open options</button>
+    </div>
+  </div>
 {:else if view === 'dial'}
   <header>
     <div class="top">
@@ -533,7 +572,7 @@
           title={index < 9 ? `Press ${index + 1}` : undefined}
           onclick={() => showPage(page.listId)}
         >
-          {#if page.icon}<span aria-hidden="true">{page.icon}</span>{/if}
+          {#if page.icon && showIcons}<span aria-hidden="true">{page.icon}</span>{/if}
           {page.name}
         </button>
       {/each}
@@ -552,7 +591,7 @@
     </p>
   {/if}
 
-  <main bind:this={main}>
+  <main bind:this={main} class:centered={appearance.current.centerVertically}>
     {#if term}
       <section class="results" aria-labelledby="results-heading">
         <div class="results-head">
@@ -644,7 +683,7 @@
         {#each active.groups as group (group.listId)}
           <section aria-labelledby="group-{group.listId}">
             <h2 id="group-{group.listId}">
-              {#if group.icon}<span aria-hidden="true">{group.icon}</span>{/if}
+              {#if group.icon && showIcons}<span aria-hidden="true">{group.icon}</span>{/if}
               {group.name}
             </h2>
             {@render grid(group.tiles)}
@@ -658,11 +697,18 @@
 <SettingsDialog bind:open={settingsOpen} bind:section={settingsSection} />
 
 <style>
+  /* The page is at least as tall as the window, so the tiles can be centred in what is left. */
+  :global(#app) {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+
   header,
   main,
   .banner {
-    /* A custom layout sets the width of the whole page content. */
-    max-width: var(--dial-width, 110rem);
+    width: 100%;
+    max-width: 110rem;
     margin: 0 auto;
     padding: 0 clamp(0.75rem, 3vw, 2.5rem);
   }
@@ -787,8 +833,24 @@
   }
 
   main {
+    flex: 1;
     padding-top: 0.5rem;
     padding-bottom: 3rem;
+  }
+
+  main.centered {
+    display: flex;
+    flex-direction: column;
+    justify-content: safe center;
+  }
+
+  /* A custom layout narrows the tiles only. Search, tabs and buttons stay where they are. */
+  #page-panel,
+  .results {
+    width: 100%;
+    max-width: var(--dial-width, none);
+    margin-right: auto;
+    margin-left: auto;
   }
 
   .grid {
@@ -875,9 +937,8 @@
 
   /* Small windows ignore a custom layout: they need all of their width. */
   @media (max-width: 30rem) {
-    header,
-    main,
-    .banner {
+    #page-panel,
+    .results {
       max-width: none;
     }
 

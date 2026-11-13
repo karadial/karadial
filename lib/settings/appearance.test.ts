@@ -21,6 +21,10 @@ const CUSTOM: Appearance = {
   imageFit: 'contain',
   showTitle: true,
   showAddress: false,
+  tileOrder: 'title',
+  centerVertically: true,
+  showListIcons: false,
+  privacyMode: true,
 };
 
 /** Stands in for the root element. */
@@ -50,6 +54,10 @@ describe('appearance settings', () => {
       imageFit: 'cover-top',
       showTitle: true,
       showAddress: true,
+      tileOrder: 'karakeep',
+      centerVertically: false,
+      showListIcons: true,
+      privacyMode: false,
     });
   });
 
@@ -66,7 +74,14 @@ describe('appearance settings', () => {
       tileSize: 'small',
     });
     expect(
-      parseAppearance({ theme: 'light', tileSize: 7, customLayout: 'yes', imageFit: 'tiled' }),
+      parseAppearance({
+        theme: 'light',
+        tileSize: 7,
+        customLayout: 'yes',
+        imageFit: 'tiled',
+        tileOrder: 'random',
+        privacyMode: 1,
+      }),
     ).toEqual({ ...DEFAULT_APPEARANCE, theme: 'light' });
   });
 

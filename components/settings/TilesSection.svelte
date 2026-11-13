@@ -3,9 +3,11 @@
     DEFAULT_TILE_LAYOUT,
     IMAGE_FITS,
     TILE_LAYOUT_LIMITS,
+    TILE_ORDERS,
     TILE_SIZES,
     type ImageFit,
     type TileLayout,
+    type TileOrder,
     type TileSize,
   } from '@/lib/settings/appearance';
 
@@ -22,6 +24,13 @@
     cover: 'Fill the tile, keep the middle',
     contain: 'Show the whole image',
     stretch: 'Stretch to the tile',
+  };
+
+  const TILE_ORDER_LABELS: Record<TileOrder, string> = {
+    karakeep: 'As in Karakeep',
+    newest: 'Newest first',
+    oldest: 'Oldest first',
+    title: 'Title, A to Z',
   };
 
   const SLIDERS: { key: keyof TileLayout; label: string; unit: string }[] = [
@@ -88,8 +97,8 @@
       {/each}
     </div>
     <p class="hint">
-      Width is the share of the window the bookmarks may use. A window too narrow for the columns
-      shows fewer of them.
+      Width is the share of the page the tiles may use. A window too narrow for the columns shows
+      fewer of them.
     </p>
     <div class="actions">
       <button
@@ -100,6 +109,32 @@
       </button>
     </div>
   {/if}
+
+  <fieldset>
+    <legend>Position</legend>
+    <label class="choice">
+      <input
+        type="checkbox"
+        checked={appearance.current.centerVertically}
+        onchange={(event) => appearance.update({ centerVertically: event.currentTarget.checked })}
+      />
+      Center vertically when the tiles do not fill the window
+    </label>
+  </fieldset>
+
+  <label for="tile-order">Order</label>
+  <select
+    id="tile-order"
+    value={appearance.current.tileOrder}
+    onchange={(event) => appearance.update({ tileOrder: event.currentTarget.value as TileOrder })}
+  >
+    {#each TILE_ORDERS as tileOrder (tileOrder)}
+      <option value={tileOrder}>{TILE_ORDER_LABELS[tileOrder]}</option>
+    {/each}
+  </select>
+  <p class="hint">
+    Applies to each page and each group on its own. Search results keep their order.
+  </p>
 
   <fieldset>
     <legend>Preview image</legend>

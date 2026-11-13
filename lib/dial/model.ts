@@ -1,6 +1,9 @@
 import { buildListTree, type ListNode } from '@/lib/karakeep/lists';
 import type { Bookmark, KarakeepList } from '@/lib/karakeep/types';
 import { isHttpUrl } from '@/lib/security/url';
+import type { TileOrder } from '@/lib/settings/appearance';
+
+import { sortTiles } from './order';
 
 /** A bookmark that may be shown as a clickable tile: its URL is http or https. */
 export interface Tile {
@@ -13,6 +16,8 @@ export interface Tile {
   imageAssetId: string | null;
   /** Only used by the search. */
   tags: string[];
+  /** ISO timestamp of when the bookmark was added, for sorting. May be empty. */
+  createdAt: string;
 }
 
 export interface DialGroup {
@@ -73,6 +78,7 @@ export function toTile(bookmark: Bookmark): Tile | null {
     host,
     imageAssetId: bookmark.imageAssetId ?? bookmark.screenshotAssetId,
     tags: bookmark.tags,
+    createdAt: bookmark.createdAt,
   };
 }
 
@@ -92,19 +98,24 @@ export function appendTiles(tiles: readonly Tile[], bookmarks: readonly Bookmark
   return result;
 }
 
-const tilesOf = (bookmarks: BookmarksByList, listId: string): Tile[] =>
-  (bookmarks.get(listId) ?? []).map(toTile).filter((tile) => tile !== null);
+const tilesOf = (bookmarks: BookmarksByList, listId: string, order: TileOrder): Tile[] =>
+  sortTiles(
+    (bookmarks.get(listId) ?? []).map(toTile).filter((tile) => tile !== null),
+    order,
+  );
 
 /**
  * Builds the pages of the speed dial in the order of `pageListIds`.
  *
  * A selected list that no longer exists is skipped. Groups without tiles are
  * left out, a page without any tile is kept so the user sees it is empty.
+ * `order` sorts the tiles of each list on its own.
  */
 export function buildPages(
   lists: readonly KarakeepList[],
   pageListIds: readonly string[],
   bookmarks: BookmarksByList,
+  order: TileOrder = 'karakeep',
 ): DialPage[] {
   const tree = buildListTree(lists);
   const pages: DialPage[] = [];
@@ -117,7 +128,7 @@ export function buildPages(
     const walk = (children: readonly ListNode[], prefix: string) => {
       for (const child of children) {
         const name = prefix + child.list.name;
-        const tiles = tilesOf(bookmarks, child.list.id);
+        const tiles = tilesOf(bookmarks, child.list.id, order);
         if (tiles.length > 0) {
           groups.push({ listId: child.list.id, name, icon: child.list.icon, tiles });
         }
@@ -130,7 +141,7 @@ export function buildPages(
       listId: node.list.id,
       name: node.list.name,
       icon: node.list.icon,
-      tiles: tilesOf(bookmarks, node.list.id),
+      tiles: tilesOf(bookmarks, node.list.id, order),
       groups,
     });
   }

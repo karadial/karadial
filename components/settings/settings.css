@@ -21,6 +21,7 @@
   margin-top: 0;
 }
 
+:where(.settings) select,
 :where(.settings) input:not([type='checkbox'], [type='radio'], [type='range']) {
   width: 100%;
   padding: 0.5rem 0.65rem;
@@ -61,6 +62,13 @@
   margin-top: -0.5rem;
 }
 
+:where(.settings) select {
+  width: auto;
+  min-width: 14rem;
+  max-width: 100%;
+}
+
+:where(.settings) select:focus-visible,
 :where(.settings) input:focus-visible,
 :where(.settings) button:focus-visible {
   outline: 2px solid var(--color-accent);

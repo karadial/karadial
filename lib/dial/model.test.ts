@@ -48,6 +48,7 @@ describe('toTile', () => {
       host: 'example.com',
       imageAssetId: 'img',
       tags: ['x'],
+      createdAt: '',
     });
   });
 

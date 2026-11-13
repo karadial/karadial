@@ -12,6 +12,10 @@ export type Theme = (typeof THEMES)[number];
 export type TileSize = (typeof TILE_SIZES)[number];
 export type ImageFit = (typeof IMAGE_FITS)[number];
 
+/** Order of the tiles of a list: as Karakeep sends them, by date added, or by title. */
+export const TILE_ORDERS = ['karakeep', 'newest', 'oldest', 'title'] as const;
+export type TileOrder = (typeof TILE_ORDERS)[number];
+
 /** A tile grid laid out by the user instead of by a tile size. */
 export interface TileLayout {
   /** Tiles per row. Narrow windows show fewer. */
@@ -49,6 +53,13 @@ export interface Appearance {
   showTitle: boolean;
   /** The host name below the title. */
   showAddress: boolean;
+  tileOrder: TileOrder;
+  /** Centre the tiles in the window when they do not fill it. */
+  centerVertically: boolean;
+  /** The icons of the Karakeep lists, on page tabs and group headings. */
+  showListIcons: boolean;
+  /** Hide the bookmarks, for example while the screen is shared. */
+  privacyMode: boolean;
 }
 
 export const DEFAULT_APPEARANCE: Appearance = {
@@ -59,6 +70,10 @@ export const DEFAULT_APPEARANCE: Appearance = {
   imageFit: 'cover-top',
   showTitle: true,
   showAddress: true,
+  tileOrder: 'karakeep',
+  centerVertically: false,
+  showListIcons: true,
+  privacyMode: false,
 };
 
 const STORAGE_KEY = 'appearance';
@@ -81,8 +96,9 @@ function parseTileLayout(value: unknown): TileLayout {
 
 /** Unknown or missing values fall back to the defaults. */
 export function parseAppearance(value: unknown): Appearance {
-  const { theme, tileSize, customLayout, layout, imageFit, showTitle, showAddress } =
-    asRecord(value);
+  const stored = asRecord(value);
+  const { theme, tileSize, customLayout, layout, imageFit, showTitle, showAddress } = stored;
+  const { tileOrder, centerVertically, showListIcons, privacyMode } = stored;
   return {
     theme: THEMES.find((known) => known === theme) ?? DEFAULT_APPEARANCE.theme,
     tileSize: TILE_SIZES.find((known) => known === tileSize) ?? DEFAULT_APPEARANCE.tileSize,
@@ -91,6 +107,10 @@ export function parseAppearance(value: unknown): Appearance {
     imageFit: IMAGE_FITS.find((known) => known === imageFit) ?? DEFAULT_APPEARANCE.imageFit,
     showTitle: showTitle !== false,
     showAddress: showAddress !== false,
+    tileOrder: TILE_ORDERS.find((known) => known === tileOrder) ?? DEFAULT_APPEARANCE.tileOrder,
+    centerVertically: centerVertically === true,
+    showListIcons: showListIcons !== false,
+    privacyMode: privacyMode === true,
   };
 }
 
@@ -157,6 +177,18 @@ export function applyAppearance(
 const HINT_KEY = 'appearance';
 
 /**
+ * The copy that `initAppearance` keeps in `localStorage`, for code that needs
+ * the appearance before `storage.local` answers. Without a copy: the defaults.
+ */
+export function readAppearanceHint(): Appearance {
+  try {
+    return parseAppearance(JSON.parse(localStorage.getItem(HINT_KEY) ?? 'null'));
+  } catch {
+    return DEFAULT_APPEARANCE;
+  }
+}
+
+/**
  * Applies the stored appearance to this page and follows later changes.
  *
  * `storage.local` answers asynchronously, after the first paint. A copy in the
@@ -164,11 +196,7 @@ const HINT_KEY = 'appearance';
  * once. The copy holds nothing but the appearance.
  */
 export function initAppearance(): void {
-  try {
-    applyAppearance(parseAppearance(JSON.parse(localStorage.getItem(HINT_KEY) ?? 'null')));
-  } catch {
-    // No usable copy: the page starts with the defaults.
-  }
+  applyAppearance(readAppearanceHint());
   const update = (appearance: Appearance) => {
     applyAppearance(appearance);
     try {

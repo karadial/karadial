@@ -2,19 +2,20 @@ import { onMount } from 'svelte';
 
 import {
   applyAppearance,
-  DEFAULT_APPEARANCE,
   getAppearance,
   onAppearanceChanged,
+  readAppearanceHint,
   saveAppearance,
   type Appearance,
 } from '@/lib/settings/appearance';
 
 /**
- * The stored appearance for a section that edits it. Call it while the
- * component is set up.
+ * The stored appearance for a component that shows or edits it. Call it while
+ * the component is set up. It starts from the local copy, so the first render
+ * is already right.
  */
 export function useAppearance() {
-  let appearance = $state.raw<Appearance>(DEFAULT_APPEARANCE);
+  let appearance = $state.raw<Appearance>(readAppearanceHint());
 
   onMount(() => {
     void getAppearance().then((stored) => (appearance = stored));
