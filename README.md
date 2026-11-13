@@ -6,10 +6,25 @@ for bookmarks stored in your self-hosted [Karakeep](https://karakeep.app) instan
 KaraDial is an independent open-source project. It is not affiliated with
 Karakeep or Speed Dial 2.
 
-> **Status:** early development. The options page and the new tab page work:
-> pages from your Karakeep lists, tiles with preview images, offline cache,
-> search on your pages and across all of Karakeep, keyboard navigation, light
-> and dark theme.
+> **Status:** early development. The features below work in Firefox and Zen.
+
+## Features
+
+- Each Karakeep list you pick becomes one page of tiles. Lists inside it are
+  shown as groups. Pages are ordered by drag and drop.
+- Typing filters your pages at once. Enter searches all of Karakeep.
+- Opens instantly from a local cache and keeps working when the server is
+  down.
+- The options open in front of the new tab page, so changes show at once.
+- Tiles your way: three sizes or your own number of columns, spacing and
+  width, vertical centering, how preview images fit, title and address on or
+  off.
+- Tile order as in Karakeep, by date added, by title, or arranged by hand with
+  drag and drop. A manual order is kept in the browser, Karakeep does not
+  store one.
+- Privacy mode hides your bookmarks, for example while you share your screen.
+  Hold Esc for a second on the new tab page to switch it.
+- Full keyboard navigation, light and dark theme.
 
 ## Targets
 
@@ -123,7 +138,8 @@ after signing, the signed `.xpi` is still attached to the workflow run as an
 artifact; otherwise raise the version and tag again.
 
 To install a release in Firefox or Zen, open the signed `.xpi` from the
-release page in the browser. The signed build does not update itself.
+release page in the browser. The signed build updates itself from the project
+website.
 
 ## License
 
