@@ -1,5 +1,5 @@
 <script module lang="ts">
-  export const SECTIONS = ['connection', 'pages', 'appearance'] as const;
+  export const SECTIONS = ['connection', 'pages', 'appearance', 'tiles'] as const;
   export type SectionId = (typeof SECTIONS)[number];
 </script>
 
@@ -9,6 +9,7 @@
   import AppearanceSection from './AppearanceSection.svelte';
   import ConnectionSection from './ConnectionSection.svelte';
   import PagesSection from './PagesSection.svelte';
+  import TilesSection from './TilesSection.svelte';
 
   /** `section` is the one on screen. Bind it to choose or remember it. */
   let { section = $bindable('connection') }: { section?: SectionId } = $props();
@@ -17,6 +18,7 @@
     connection: 'Connection',
     pages: 'Pages',
     appearance: 'Appearance',
+    tiles: 'Tiles',
   };
 </script>
 
@@ -39,8 +41,10 @@
       <ConnectionSection />
     {:else if section === 'pages'}
       <PagesSection />
-    {:else}
+    {:else if section === 'appearance'}
       <AppearanceSection />
+    {:else}
+      <TilesSection />
     {/if}
   </div>
 </div>

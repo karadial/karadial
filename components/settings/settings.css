@@ -31,6 +31,36 @@
   font: inherit;
 }
 
+:where(.settings) fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+  margin: 1.25rem 0 0;
+  padding: 0;
+  border: none;
+}
+
+:where(.settings) legend {
+  margin-bottom: 0.3rem;
+  padding: 0;
+  font-weight: 600;
+}
+
+/* A radio button or checkbox with its text. */
+:where(.settings) label.choice {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0.25rem 0;
+  font-weight: 400;
+  cursor: pointer;
+}
+
+:where(.settings) .intro {
+  margin-top: -0.5rem;
+}
+
 :where(.settings) input:focus-visible,
 :where(.settings) button:focus-visible {
   outline: 2px solid var(--color-accent);

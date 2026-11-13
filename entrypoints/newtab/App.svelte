@@ -661,7 +661,8 @@
   header,
   main,
   .banner {
-    max-width: 110rem;
+    /* A custom layout sets the width of the whole page content. */
+    max-width: var(--dial-width, 110rem);
     margin: 0 auto;
     padding: 0 clamp(0.75rem, 3vw, 2.5rem);
   }
@@ -793,7 +794,7 @@
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(var(--tile-min-width, 11rem), 100%), 1fr));
-    gap: 0.5rem;
+    gap: var(--tile-gap, 0.5rem);
   }
 
   section {
@@ -872,7 +873,14 @@
     margin-top: 1.25rem;
   }
 
+  /* Small windows ignore a custom layout: they need all of their width. */
   @media (max-width: 30rem) {
+    header,
+    main,
+    .banner {
+      max-width: none;
+    }
+
     .grid {
       --tile-min-width: 8.5rem;
     }

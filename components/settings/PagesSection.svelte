@@ -180,10 +180,6 @@
     font-weight: 600;
   }
 
-  .intro {
-    margin-top: -0.5rem;
-  }
-
   ol,
   ul {
     margin: 0;
