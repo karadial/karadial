@@ -108,6 +108,7 @@
   }
 
   .thumb {
+    position: relative;
     display: grid;
     place-items: center;
     aspect-ratio: 16 / 10;
@@ -121,7 +122,13 @@
     border-color: var(--color-border-strong);
   }
 
+  /*
+   * Out of the flow, so the image always has the size of the frame. As a grid
+   * item a tall image kept its own height and `object-fit` did nothing.
+   */
   img {
+    position: absolute;
+    inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
