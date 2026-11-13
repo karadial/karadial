@@ -97,6 +97,16 @@ describe('buildPages', () => {
     ]);
   });
 
+  it('orders the tiles of each list on its own', () => {
+    const many = new Map([
+      ['work', [bookmark('a'), bookmark('b'), bookmark('c')]],
+      ['tools', [bookmark('a'), bookmark('b')]],
+    ]);
+    const [page] = buildPages(lists, ['work'], many, 'manual', { work: ['c', 'a'], tools: ['b'] });
+    expect(page!.tiles.map((t) => t.id)).toEqual(['c', 'a', 'b']);
+    expect(page!.groups[0]!.tiles.map((t) => t.id)).toEqual(['b', 'a']);
+  });
+
   it('skips a selected list that no longer exists', () => {
     expect(buildPages(lists, ['gone', 'home'], bookmarks).map((p) => p.listId)).toEqual(['home']);
   });

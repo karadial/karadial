@@ -12,8 +12,11 @@ export type Theme = (typeof THEMES)[number];
 export type TileSize = (typeof TILE_SIZES)[number];
 export type ImageFit = (typeof IMAGE_FITS)[number];
 
-/** Order of the tiles of a list: as Karakeep sends them, by date added, or by title. */
-export const TILE_ORDERS = ['karakeep', 'newest', 'oldest', 'title'] as const;
+/**
+ * Order of the tiles of a list: as Karakeep sends them, as the user dragged
+ * them, by date added, or by title.
+ */
+export const TILE_ORDERS = ['karakeep', 'manual', 'newest', 'oldest', 'title'] as const;
 export type TileOrder = (typeof TILE_ORDERS)[number];
 
 /** A tile grid laid out by the user instead of by a tile size. */

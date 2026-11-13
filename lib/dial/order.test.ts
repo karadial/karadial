@@ -36,6 +36,11 @@ describe('sortTiles', () => {
     expect(ids(sortTiles(tiles, 'title'))).toBe('acbd');
   });
 
+  it('follows the manual order and puts unknown tiles last', () => {
+    expect(ids(sortTiles(tiles, 'manual', ['d', 'gone', 'b']))).toBe('dbac');
+    expect(ids(sortTiles(tiles, 'manual'))).toBe('bacd');
+  });
+
   it('does not change the list it was given', () => {
     sortTiles(tiles, 'title');
     expect(ids(tiles)).toBe('bacd');

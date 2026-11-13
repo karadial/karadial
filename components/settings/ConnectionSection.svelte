@@ -23,6 +23,7 @@
     saveConnection,
     type Connection,
   } from '@/lib/settings/connection';
+  import { clearManualOrders } from '@/lib/settings/manual-order';
   import { clearPageListIds } from '@/lib/settings/pages';
 
   type TestState =
@@ -135,6 +136,7 @@
     // List ids of another server mean nothing here.
     if (previous && new URL(previous.baseUrl).origin !== new URL(next.baseUrl).origin) {
       await clearPageListIds();
+      await clearManualOrders();
     }
 
     permitted = granted;
@@ -182,6 +184,7 @@
     const previous = saved;
     await clearConnection();
     await clearPageListIds();
+    await clearManualOrders();
     await deleteCache().catch(() => undefined);
     await removeHostPermission(previous.baseUrl);
     saved = null;

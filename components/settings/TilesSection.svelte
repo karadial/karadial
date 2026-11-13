@@ -28,6 +28,7 @@
 
   const TILE_ORDER_LABELS: Record<TileOrder, string> = {
     karakeep: 'As in Karakeep',
+    manual: 'Manual, by drag and drop',
     newest: 'Newest first',
     oldest: 'Oldest first',
     title: 'Title, A to Z',
@@ -133,7 +134,12 @@
     {/each}
   </select>
   <p class="hint">
-    Applies to each page and each group on its own. Search results keep their order.
+    {#if appearance.current.tileOrder === 'manual'}
+      Drag a tile on the new tab page to move it within its page or group. The order is kept in this
+      browser only. New bookmarks are added at the end.
+    {:else}
+      Applies to each page and each group on its own. Search results keep their order.
+    {/if}
   </p>
 
   <fieldset>

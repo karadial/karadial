@@ -18,6 +18,12 @@
   import { KarakeepError, type KarakeepErrorKind } from '@/lib/karakeep/errors';
   import { hasHostPermission, onHostPermissionChanged } from '@/lib/permissions/host';
   import { getConnection, onConnectionChanged } from '@/lib/settings/connection';
+  import {
+    getManualOrders,
+    onManualOrdersChanged,
+    saveManualOrder,
+    type ManualOrders,
+  } from '@/lib/settings/manual-order';
   import { createSearchIndex } from '@/lib/search/fuzzy';
   import { getPageListIds, onPageListIdsChanged } from '@/lib/settings/pages';
 
@@ -81,12 +87,33 @@
   const privacy = $derived(appearance.current.privacyMode);
   const showIcons = $derived(appearance.current.showListIcons);
 
+  /** A tile being dragged to a new place in the manual order of its list. */
+  interface TileDrag {
+    listId: string;
+    id: string;
+    /** Order of the list while dragging. Saved on drop. */
+    ids: string[];
+    moved: boolean;
+    dropped: boolean;
+  }
+
+  let manualOrders = $state.raw<ManualOrders>({});
+  let drag = $state.raw<TileDrag | null>(null);
+  const manual = $derived(appearance.current.tileOrder === 'manual');
+
   let session: Session | null = null;
   let remoteAbort: AbortController | null = null;
   let remoteTimer: ReturnType<typeof setTimeout> | undefined;
 
   const pages = $derived(
-    buildPages(data.lists, pageIds, data.bookmarks, appearance.current.tileOrder),
+    buildPages(
+      data.lists,
+      pageIds,
+      data.bookmarks,
+      appearance.current.tileOrder,
+      // What is being dragged shows where it would land.
+      drag ? { ...manualOrders, [drag.listId]: drag.ids } : manualOrders,
+    ),
   );
   const active = $derived(pages.find((page) => page.listId === activeId) ?? pages[0] ?? null);
   const hasData = $derived(data.fetchedAt !== null);
@@ -285,8 +312,10 @@
 
   onMount(() => {
     void start();
+    void getManualOrders().then((orders) => (manualOrders = orders));
     const restart = () => void start();
     const unsubscribe = [
+      onManualOrdersChanged((orders) => (manualOrders = orders)),
       onConnectionChanged(restart),
       onPageListIdsChanged(restart),
       onHostPermissionChanged(restart),
@@ -333,6 +362,46 @@
   function openOptions(section?: SectionId) {
     if (section) settingsSection = section;
     settingsOpen = true;
+  }
+
+  const tileIdAt = (target: EventTarget | null): string | null =>
+    (target instanceof Element && target.closest<HTMLElement>('[data-tile]')?.dataset.id) || null;
+
+  /** Dragging a tile starts a move when the order is manual. Otherwise it stays a plain link drag. */
+  function onTileDragStart(event: DragEvent, listId: string, tiles: TileData[]) {
+    const id = tileIdAt(event.target);
+    if (!manual || id === null) return;
+    drag = { listId, id, ids: tiles.map((tile) => tile.id), moved: false, dropped: false };
+  }
+
+  /** The dragged tile takes the place of the tile under the pointer, within its own list. */
+  function onTileDragOver(event: DragEvent, listId: string) {
+    const current = drag;
+    if (!current || current.listId !== listId) return;
+    event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+    const over = tileIdAt(event.target);
+    const target = over === null ? -1 : current.ids.indexOf(over);
+    if (over === current.id || target === -1) return;
+    const ids = current.ids.filter((id) => id !== current.id);
+    ids.splice(target, 0, current.id);
+    drag = { ...current, ids, moved: true };
+  }
+
+  /** Prevented, so the browser does not open the dropped link. */
+  function onTileDrop(event: DragEvent, listId: string) {
+    if (!drag || drag.listId !== listId) return;
+    event.preventDefault();
+    drag = { ...drag, dropped: true };
+  }
+
+  /** Saves the new order. A drag that ended anywhere else, or with Escape, changes nothing. */
+  function onTileDragEnd() {
+    const ended = drag;
+    drag = null;
+    if (!ended?.dropped || !ended.moved) return;
+    manualOrders = { ...manualOrders, [ended.listId]: ended.ids };
+    void saveManualOrder(ended.listId, ended.ids);
   }
 
   /** Escape presses that may add up to three in a row. */
@@ -477,12 +546,28 @@
 
 <svelte:window onkeydown={onKeydown} />
 
-{#snippet grid(tiles: TileData[])}
-  <div class="grid">
-    {#each tiles as tile (tile.id)}
-      <Tile {tile} {loader} />
-    {/each}
-  </div>
+<!-- `listId` is the list whose tiles can be rearranged by dragging, or null for search results. -->
+{#snippet grid(tiles: TileData[], listId: string | null)}
+  {#if listId === null}
+    <div class="grid">
+      {#each tiles as tile (tile.id)}
+        <Tile {tile} {loader} />
+      {/each}
+    </div>
+  {:else}
+    <div
+      class="grid"
+      role="group"
+      ondragstart={(event) => onTileDragStart(event, listId, tiles)}
+      ondragover={(event) => onTileDragOver(event, listId)}
+      ondrop={(event) => onTileDrop(event, listId)}
+      ondragend={onTileDragEnd}
+    >
+      {#each tiles as tile (tile.id)}
+        <Tile {tile} {loader} dragging={drag?.listId === listId && drag.id === tile.id} />
+      {/each}
+    </div>
+  {/if}
 {/snippet}
 
 {#snippet message(title: string, text: string, retry: boolean, section: SectionId)}
@@ -608,7 +693,7 @@
 
         {#if scope === 'local'}
           {#if localHits.length > 0}
-            {@render grid(localHits)}
+            {@render grid(localHits, null)}
             <p class="note" role="status">
               {#if localHits.length === LOCAL_LIMIT}Showing the first {LOCAL_LIMIT} matches.{/if}
               Press Enter to search all of Karakeep.
@@ -632,7 +717,7 @@
         {:else if remote.tiles.length === 0}
           <p class="empty" role="status">Karakeep found no link bookmarks for this search.</p>
         {:else}
-          {@render grid(remote.tiles)}
+          {@render grid(remote.tiles, null)}
           {#if remote.problem}
             <p class="note" role="alert">
               {searchProblemText(remote.problem)}
@@ -676,7 +761,7 @@
         )}
       {:else}
         {#if active.tiles.length > 0}
-          {@render grid(active.tiles)}
+          {@render grid(active.tiles, active.listId)}
         {:else if active.groups.length === 0}
           <p class="empty">This list has no link bookmarks yet.</p>
         {/if}
@@ -686,7 +771,7 @@
               {#if group.icon && showIcons}<span aria-hidden="true">{group.icon}</span>{/if}
               {group.name}
             </h2>
-            {@render grid(group.tiles)}
+            {@render grid(group.tiles, group.listId)}
           </section>
         {/each}
       {/if}

@@ -34,7 +34,11 @@
   import type { ImageLoader } from '@/lib/dial/images';
   import type { Tile } from '@/lib/dial/model';
 
-  let { tile, loader }: { tile: Tile; loader: ImageLoader | null } = $props();
+  let {
+    tile,
+    loader,
+    dragging = false,
+  }: { tile: Tile; loader: ImageLoader | null; dragging?: boolean } = $props();
 
   let element = $state<HTMLAnchorElement>();
   let src = $state<string | null>(null);
@@ -70,7 +74,9 @@
 <a
   bind:this={element}
   class="tile"
+  class:dragging
   data-tile
+  data-id={tile.id}
   href={tile.url}
   rel="noopener noreferrer"
   referrerpolicy="no-referrer"
@@ -100,6 +106,11 @@
 
   .tile:hover {
     background: var(--color-surface);
+  }
+
+  /* The tile being moved in the manual order. */
+  .tile.dragging {
+    opacity: 0.35;
   }
 
   .tile:focus-visible {
