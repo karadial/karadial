@@ -61,6 +61,7 @@
     background: var(--color-bg);
     border-right: 1px solid var(--color-border);
     overflow-y: auto;
+    overscroll-behavior: contain;
   }
 
   nav button {
@@ -89,6 +90,8 @@
     padding: 1.5rem;
     background: var(--color-surface);
     overflow-y: auto;
+    /* In the dialog, scrolling past the end must not move the page behind it. */
+    overscroll-behavior: contain;
   }
 
   @media (max-width: 40rem) {

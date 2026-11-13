@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { browser } from 'wxt/browser';
 
   import { openCache, type Cache } from '@/lib/cache/db';
   import { createMemoryCache } from '@/lib/cache/memory';
@@ -22,6 +21,9 @@
   import { createSearchIndex } from '@/lib/search/fuzzy';
   import { getPageListIds, onPageListIdsChanged } from '@/lib/settings/pages';
 
+  import type { SectionId } from '@/components/settings/SettingsPanel.svelte';
+
+  import SettingsDialog from './SettingsDialog.svelte';
   import Tile from './Tile.svelte';
 
   /** Everything that belongs to one loaded configuration. Replaced as a whole when settings change. */
@@ -70,6 +72,9 @@
   /** Typing filters the cached pages. Enter or the toggle asks the server. */
   let scope = $state<'local' | 'server'>('local');
   let remote = $state.raw<Remote | null>(null);
+  let settingsOpen = $state(false);
+  /** The section the options dialog shows. It reopens where it was left. */
+  let settingsSection = $state<SectionId>('connection');
 
   let session: Session | null = null;
   let remoteAbort: AbortController | null = null;
@@ -304,7 +309,6 @@
     }
   }
 
-  // Same tab, so the options page can lead back here and the browser's back button works.
   function searchProblemText(kind: Problem): string {
     switch (kind) {
       case 'network':
@@ -318,7 +322,11 @@
     }
   }
 
-  const openOptions = () => location.assign(browser.runtime.getURL('/options.html'));
+  /** Opens the options in front of the page, so changes show behind them at once. */
+  function openOptions(section?: SectionId) {
+    if (section) settingsSection = section;
+    settingsOpen = true;
+  }
 
   function isTyping(target: EventTarget | null): boolean {
     return (
@@ -386,7 +394,7 @@
    * character starts a search.
    */
   function onKeydown(event: KeyboardEvent) {
-    if (event.isComposing || view !== 'dial' || isTyping(event.target)) return;
+    if (event.isComposing || settingsOpen || view !== 'dial' || isTyping(event.target)) return;
     if (event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) {
       if (switchPage(event)) event.preventDefault();
       return;
@@ -449,7 +457,7 @@
   </div>
 {/snippet}
 
-{#snippet message(title: string, text: string, retry: boolean)}
+{#snippet message(title: string, text: string, retry: boolean, section: SectionId)}
   <div class="message">
     <h1>{title}</h1>
     <p>{text}</p>
@@ -459,18 +467,24 @@
           Try again
         </button>
       {/if}
-      <button type="button" onclick={openOptions}>Open options</button>
+      <button type="button" onclick={() => openOptions(section)}>Open options</button>
     </div>
   </div>
 {/snippet}
 
 {#if view === 'unconfigured'}
-  {@render message('KaraDial', 'Connect KaraDial to your Karakeep instance to get started.', false)}
+  {@render message(
+    'KaraDial',
+    'Connect KaraDial to your Karakeep instance to get started.',
+    false,
+    'connection',
+  )}
 {:else if view === 'no-pages'}
   {@render message(
     'KaraDial',
     'Choose the Karakeep lists you want to see here. Each list becomes one page.',
     false,
+    'pages',
   )}
 {:else if view === 'dial'}
   <header>
@@ -496,7 +510,7 @@
             {refreshing ? 'Refreshing...' : 'Refresh'}
           </button>
         {/if}
-        <button type="button" onclick={openOptions}>Options</button>
+        <button type="button" onclick={() => openOptions()}>Options</button>
       </div>
     </div>
     <div
@@ -529,7 +543,7 @@
   {#if hasData && !permitted}
     <p class="banner" role="status">
       KaraDial has no access to {host}. Showing the bookmarks saved on {savedAt}.
-      <button type="button" onclick={openOptions}>Open options</button>
+      <button type="button" onclick={() => openOptions('connection')}>Open options</button>
     </p>
   {:else if hasData && problem}
     <p class="banner" role="status">
@@ -607,9 +621,10 @@
             'No access',
             `KaraDial has no access to ${host}. Grant access in the options.`,
             false,
+            'connection',
           )}
         {:else if problem}
-          {@render message('No bookmarks yet', problemText(problem), true)}
+          {@render message('No bookmarks yet', problemText(problem), true, 'connection')}
         {:else}
           <p class="empty" role="status">Loading your bookmarks...</p>
         {/if}
@@ -618,6 +633,7 @@
           'Nothing to show',
           'The selected lists no longer exist in Karakeep. Choose other lists in the options.',
           false,
+          'pages',
         )}
       {:else}
         {#if active.tiles.length > 0}
@@ -638,6 +654,8 @@
     </div>
   </main>
 {/if}
+
+<SettingsDialog bind:open={settingsOpen} bind:section={settingsSection} />
 
 <style>
   header,
