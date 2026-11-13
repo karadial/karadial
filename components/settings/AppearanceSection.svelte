@@ -55,7 +55,7 @@
     </label>
   </fieldset>
   <p class="hint">
-    Hides your bookmarks on every new tab, for example while you share your screen. Pressing Esc
-    three times on the new tab page switches it on and off.
+    Hides your bookmarks on every new tab, for example while you share your screen. Holding Esc for
+    a second on the new tab page switches it on and off.
   </p>
 </section>

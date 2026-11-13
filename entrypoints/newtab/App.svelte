@@ -404,19 +404,21 @@
     void saveManualOrder(ended.listId, ended.ids);
   }
 
-  /** Escape presses that may add up to three in a row. */
-  let escapes: number[] = [];
-  const ESCAPE_WINDOW_MS = 1200;
+  /** How long Escape has to be held to switch the privacy mode. */
+  const ESCAPE_HOLD_MS = 1000;
+  let escapeTimer: ReturnType<typeof setTimeout> | undefined;
 
-  /** Three quick presses of Escape switch the privacy mode. Returns whether this was the third. */
-  function countEscape(event: KeyboardEvent): boolean {
-    if (event.key !== 'Escape' || event.repeat) return false;
-    const now = Date.now();
-    escapes = [...escapes.filter((time) => now - time < ESCAPE_WINDOW_MS), now];
-    if (escapes.length < 3) return false;
-    escapes = [];
-    appearance.update({ privacyMode: !privacy });
-    return true;
+  /** Holding Escape switches the privacy mode. A short press keeps its usual meaning. */
+  function holdEscape(event: KeyboardEvent) {
+    // While the key is held the browser repeats the event. Only the first one counts.
+    if (event.key !== 'Escape' || event.repeat) return;
+    clearTimeout(escapeTimer);
+    escapeTimer = setTimeout(() => appearance.update({ privacyMode: !privacy }), ESCAPE_HOLD_MS);
+  }
+
+  /** Letting go early, or leaving the page, calls it off. */
+  function releaseEscape(event?: KeyboardEvent) {
+    if (!event || event.key === 'Escape') clearTimeout(escapeTimer);
   }
 
   function isTyping(target: EventTarget | null): boolean {
@@ -487,10 +489,7 @@
   function onKeydown(event: KeyboardEvent) {
     // In the options dialog Escape closes the dialog and nothing else.
     if (event.isComposing || settingsOpen) return;
-    if (countEscape(event)) {
-      event.preventDefault();
-      return;
-    }
+    holdEscape(event);
     if (privacy || view !== 'dial' || isTyping(event.target)) return;
     if (event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) {
       if (switchPage(event)) event.preventDefault();
@@ -544,7 +543,7 @@
   }
 </script>
 
-<svelte:window onkeydown={onKeydown} />
+<svelte:window onkeydown={onKeydown} onkeyup={releaseEscape} onblur={() => releaseEscape()} />
 
 <!-- `listId` is the list whose tiles can be rearranged by dragging, or null for search results. -->
 {#snippet grid(tiles: TileData[], listId: string | null)}
@@ -602,7 +601,7 @@
 {:else if view === 'dial' && privacy}
   <div class="message">
     <h1>KaraDial</h1>
-    <p>Privacy mode is on and your bookmarks are hidden. Press Esc three times to show them.</p>
+    <p>Privacy mode is on and your bookmarks are hidden. Hold Esc for a second to show them.</p>
     <div class="actions">
       <button type="button" onclick={() => appearance.update({ privacyMode: false })}>
         Show bookmarks
