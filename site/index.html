@@ -10,26 +10,33 @@
     />
     <link rel="icon" href="icon.png" />
     <style>
+      /* The colours, corners and pills of the extension itself, see assets/theme.css. */
       :root {
         color-scheme: light dark;
-        --bg: #f6f7f9;
-        --surface: #ffffff;
-        --border: #e1e4e9;
-        --text: #1b1f24;
-        --muted: #5b6470;
-        --accent: #2f5fc0;
+        --bg: #e9edf1;
+        --surface: #fbfcfd;
+        --well: #eef1f4;
+        --border: rgb(22 26 31 / 0.1);
+        --border-strong: rgb(22 26 31 / 0.24);
+        --text: #161a1f;
+        --muted: #566070;
+        --accent: #1c5bd0;
         --on-accent: #ffffff;
+        --shadow: rgb(20 30 50 / 0.4);
       }
 
       @media (prefers-color-scheme: dark) {
         :root {
-          --bg: #15181c;
-          --surface: #1f2329;
-          --border: #2c323a;
-          --text: #e6e9ed;
-          --muted: #9aa4b1;
-          --accent: #7ea6f2;
-          --on-accent: #10151c;
+          --bg: #0e1114;
+          --surface: #171b20;
+          --well: #1f242a;
+          --border: rgb(232 235 239 / 0.1);
+          --border-strong: rgb(232 235 239 / 0.26);
+          --text: #e8ebef;
+          --muted: #9ca5b0;
+          --accent: #86b4ff;
+          --on-accent: #0b1830;
+          --shadow: rgb(0 0 0 / 0.6);
         }
       }
 
@@ -48,76 +55,51 @@
           Roboto,
           sans-serif;
         line-height: 1.6;
+        letter-spacing: 0.015em;
+        -webkit-font-smoothing: antialiased;
       }
 
       main {
-        max-width: 44rem;
+        max-width: 42rem;
         margin: 0 auto;
-        padding: clamp(2rem, 8vw, 5rem) 1.25rem 4rem;
+        padding: clamp(2rem, 8vw, 5rem) 1rem 3rem;
       }
 
       header {
         display: flex;
         align-items: center;
-        gap: 1rem;
+        gap: 0.75rem;
+        font-size: 1.0625rem;
+        font-weight: 600;
       }
 
-      header img {
-        width: 3.5rem;
-        height: 3.5rem;
-        border-radius: 0.9rem;
+      header svg {
+        width: 2rem;
+        height: 2rem;
+        fill: var(--on-accent);
+      }
+
+      header .tile {
+        fill: var(--accent);
       }
 
       h1 {
-        margin: 0;
-        font-size: 2rem;
+        margin: 2.5rem 0 0;
+        font-size: clamp(1.75rem, 6vw, 2.5rem);
+        font-weight: 600;
         line-height: 1.2;
+        text-wrap: balance;
       }
 
       .lead {
-        margin: 1.5rem 0;
-        font-size: 1.25rem;
-      }
-
-      h2 {
-        margin: 2.5rem 0 0.5rem;
-        font-size: 1.1rem;
-      }
-
-      p,
-      ul {
-        margin: 0.5rem 0;
-      }
-
-      ul {
-        padding-left: 1.25rem;
+        max-width: 34rem;
+        margin: 1rem 0 0;
+        color: var(--muted);
+        font-size: 1.125rem;
       }
 
       a {
         color: var(--accent);
-      }
-
-      .actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-        margin: 1.75rem 0;
-      }
-
-      .button {
-        padding: 0.65rem 1.2rem;
-        border: 1px solid var(--border);
-        border-radius: 999px;
-        background: var(--surface);
-        color: var(--text);
-        font-weight: 600;
-        text-decoration: none;
-      }
-
-      .button.primary {
-        border-color: var(--accent);
-        background: var(--accent);
-        color: var(--on-accent);
       }
 
       a:focus-visible {
@@ -125,22 +107,106 @@
         outline-offset: 2px;
       }
 
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+        margin: 2rem 0 3rem;
+      }
+
+      .button {
+        display: inline-flex;
+        align-items: center;
+        height: 2.75rem;
+        padding: 0 1.25rem;
+        background: var(--surface);
+        color: var(--text);
+        border-radius: 999px;
+        box-shadow: 0 0 0 1px var(--border);
+        font-size: 0.9375rem;
+        font-weight: 500;
+        text-decoration: none;
+      }
+
+      .button:hover {
+        box-shadow: 0 0 0 1px var(--border-strong);
+      }
+
+      .button.primary {
+        background: var(--accent);
+        color: var(--on-accent);
+        box-shadow: none;
+        font-weight: 600;
+      }
+
+      /* One panel per topic, like the lists on the new tab page. */
+      section {
+        margin-top: 1rem;
+        padding: 1.5rem;
+        background: var(--surface);
+        border-radius: 1.5rem;
+        box-shadow: 0 0 0 1px var(--border);
+      }
+
+      h2 {
+        margin: 0 0 0.75rem;
+        font-size: 1.0625rem;
+        font-weight: 600;
+      }
+
+      p,
+      ul {
+        margin: 0;
+      }
+
+      ul {
+        display: grid;
+        gap: 0.5rem;
+        padding: 0;
+        list-style: none;
+      }
+
+      code {
+        padding: 0.1rem 0.4rem;
+        background: var(--well);
+        border-radius: 0.4rem;
+        font-size: 0.875em;
+      }
+
       footer {
-        margin-top: 3rem;
-        padding-top: 1.25rem;
-        border-top: 1px solid var(--border);
+        margin-top: 2rem;
         color: var(--muted);
-        font-size: 0.9rem;
+        font-size: 0.8125rem;
+        text-align: center;
+      }
+
+      @media (max-width: 30rem) {
+        section {
+          padding: 1rem;
+          border-radius: 1rem;
+        }
+      }
+
+      @media (prefers-reduced-motion: no-preference) {
+        .button {
+          transition: box-shadow 150ms ease;
+        }
       }
     </style>
   </head>
   <body>
     <main>
       <header>
-        <img src="icon.png" alt="" width="56" height="56" />
-        <h1>KaraDial</h1>
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <rect class="tile" width="32" height="32" rx="9" />
+          <rect x="7.5" y="7" width="5.4" height="18" rx="2.7" />
+          <path d="M15.2 15V7a9.8 8 0 0 1 9.8 8z" />
+          <rect x="15.2" y="17.2" width="7.8" height="7.8" rx="2.2" />
+        </svg>
+        KaraDial
       </header>
 
+      <h1>Your Karakeep bookmarks on every new tab</h1>
       <p class="lead">
         A browser extension that replaces your new tab page with the bookmarks from your self-hosted
         <a href="https://karakeep.app">Karakeep</a> instance.
@@ -153,37 +219,44 @@
         <a class="button" href="https://github.com/karadial/karadial">Source code</a>
       </div>
 
-      <h2>What it does</h2>
-      <ul>
-        <li>Each Karakeep list you pick becomes one page of tiles, child lists become groups.</li>
-        <li>Typing filters your pages at once. Enter searches all of Karakeep.</li>
-        <li>Opens instantly from a local cache and keeps working when the server is down.</li>
-        <li>
-          Tiles your way: size or your own columns, spacing and width, how preview images fit, which
-          texts they show.
-        </li>
-        <li>Order tiles as in Karakeep, by date, by title, or by hand with drag and drop.</li>
-        <li>
-          Privacy mode hides your bookmarks while you share your screen. Hold Esc for a second to
-          switch it.
-        </li>
-        <li>Full keyboard navigation, light and dark theme.</li>
-      </ul>
+      <section>
+        <h2>What it does</h2>
+        <ul>
+          <li>Each Karakeep list you pick becomes one page of tiles, child lists become groups.</li>
+          <li>Typing filters your pages at once. Enter searches all of Karakeep.</li>
+          <li>Opens instantly from a local cache and keeps working when the server is down.</li>
+          <li>
+            Tiles your way: size or your own columns, spacing and width, how preview images fit,
+            which texts they show.
+          </li>
+          <li>Order tiles as in Karakeep, by date, by title, or by hand with drag and drop.</li>
+          <li>
+            Privacy mode hides your bookmarks while you share your screen. Hold Esc for a second to
+            switch it.
+          </li>
+          <li>Full keyboard navigation. Press <code>?</code> for the list of shortcuts.</li>
+          <li>Light and dark theme.</li>
+        </ul>
+      </section>
 
-      <h2>Install</h2>
-      <p>
-        KaraDial runs in Firefox 140 or later and in Firefox based browsers such as Zen. Open the
-        signed <code>.xpi</code> file from the latest release in the browser. It updates itself from
-        this site. Then enter the address of your Karakeep instance and a read-only API key in the
-        options.
-      </p>
+      <section>
+        <h2>Install</h2>
+        <p>
+          KaraDial runs in Firefox 140 or later and in Firefox based browsers such as Zen. Open the
+          signed <code>.xpi</code> file from the latest release in the browser. It updates itself
+          from this site. Then enter the address of your Karakeep instance and a read-only API key
+          in the options.
+        </p>
+      </section>
 
-      <h2>Privacy</h2>
-      <p>
-        KaraDial talks only to the Karakeep instance you configure. It sends your API key and, when
-        you search all of Karakeep, your search terms to that instance and nowhere else. No
-        analytics, no telemetry, no remote code.
-      </p>
+      <section>
+        <h2>Privacy</h2>
+        <p>
+          KaraDial talks only to the Karakeep instance you configure. It sends your API key and,
+          when you search all of Karakeep, your search terms to that instance and nowhere else. No
+          analytics, no telemetry, no remote code.
+        </p>
+      </section>
 
       <footer>
         KaraDial is an independent open-source project under the MIT license. It is not affiliated
