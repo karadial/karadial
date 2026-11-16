@@ -1,17 +1,29 @@
 :root {
   color-scheme: light dark;
 
-  --color-bg: #f6f7f9;
-  --color-surface: #ffffff;
-  --color-border: #e1e4e9;
-  --color-border-strong: #b9c0ca;
-  --color-text: #1b1f24;
-  --color-text-muted: #5b6470;
-  --color-accent: #2f5fc0;
+  --color-bg: #e9edf1;
+  --color-surface: #fbfcfd;
+  /* A recessed area on the page: the tab bar, counters, key caps. */
+  --color-well: #eef1f4;
+  --color-border: rgb(22 26 31 / 0.1);
+  --color-border-strong: rgb(22 26 31 / 0.24);
+  --color-text: #161a1f;
+  --color-text-muted: #566070;
+  --color-accent: #1c5bd0;
   --color-on-accent: #ffffff;
   --color-success: #2e7d4f;
   --color-warning: #b26a00;
   --color-error: #c0392b;
+  --color-shadow: rgb(20 30 50 / 0.4);
+
+  /* Tiles without an image: saturation and lightness of the frame, lightness of the letter. */
+  --placeholder-saturation: 34%;
+  --placeholder-lightness: 86%;
+  --placeholder-ink: 32%;
+
+  --radius-sm: 0.625rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.5rem;
 
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
@@ -19,34 +31,44 @@
 /* Dark colours: by system preference unless light is forced, or forced by the setting. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --color-bg: #15181c;
-    --color-surface: #1f2329;
-    --color-border: #2c323a;
-    --color-border-strong: #4a525e;
-    --color-text: #e6e9ed;
-    --color-text-muted: #9aa4b1;
-    --color-accent: #7ea6f2;
-    --color-on-accent: #10151c;
+    --color-bg: #0e1114;
+    --color-surface: #171b20;
+    --color-well: #1f242a;
+    --color-border: rgb(232 235 239 / 0.1);
+    --color-border-strong: rgb(232 235 239 / 0.26);
+    --color-text: #e8ebef;
+    --color-text-muted: #9ca5b0;
+    --color-accent: #86b4ff;
+    --color-on-accent: #0b1830;
     --color-success: #5fbf85;
     --color-warning: #e0a03c;
     --color-error: #ef7b6e;
+    --color-shadow: rgb(0 0 0 / 0.6);
+    --placeholder-saturation: 22%;
+    --placeholder-lightness: 26%;
+    --placeholder-ink: 80%;
   }
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --color-bg: #15181c;
-  --color-surface: #1f2329;
-  --color-border: #2c323a;
-  --color-border-strong: #4a525e;
-  --color-text: #e6e9ed;
-  --color-text-muted: #9aa4b1;
-  --color-accent: #7ea6f2;
-  --color-on-accent: #10151c;
+  --color-bg: #0e1114;
+  --color-surface: #171b20;
+  --color-well: #1f242a;
+  --color-border: rgb(232 235 239 / 0.1);
+  --color-border-strong: rgb(232 235 239 / 0.26);
+  --color-text: #e8ebef;
+  --color-text-muted: #9ca5b0;
+  --color-accent: #86b4ff;
+  --color-on-accent: #0b1830;
   --color-success: #5fbf85;
   --color-warning: #e0a03c;
   --color-error: #ef7b6e;
+  --color-shadow: rgb(0 0 0 / 0.6);
+  --placeholder-saturation: 22%;
+  --placeholder-lightness: 26%;
+  --placeholder-ink: 80%;
 }
 
 :root[data-theme='light'] {
@@ -87,4 +109,7 @@ body {
   color: var(--color-text);
   font-family: var(--font-sans);
   line-height: 1.5;
+  /* The system font sets a little tight for this design. */
+  letter-spacing: 0.015em;
+  -webkit-font-smoothing: antialiased;
 }

@@ -60,33 +60,36 @@
   nav {
     display: flex;
     flex-direction: column;
-    gap: 0.15rem;
+    gap: 0.25rem;
     padding: 1rem 0.75rem;
-    background: var(--color-bg);
+    background: var(--color-well);
     border-right: 1px solid var(--color-border);
     overflow-y: auto;
     overscroll-behavior: contain;
   }
 
+  /* Like the page tabs: the chosen section is a raised pill on the recessed bar. */
   nav button {
-    padding: 0.5rem 0.75rem;
+    flex: none;
     background: transparent;
     color: var(--color-text-muted);
-    border: 1px solid transparent;
-    border-radius: 0.5rem;
+    box-shadow: none;
+    font-size: 0.9375rem;
     text-align: left;
   }
 
-  nav button:hover {
-    background: var(--color-surface);
+  nav button:hover:not(:disabled) {
+    background: transparent;
     color: var(--color-text);
   }
 
-  nav button[aria-current='page'] {
+  nav button[aria-current='page'],
+  nav button[aria-current='page']:hover {
     background: var(--color-surface);
-    border-color: var(--color-border);
     color: var(--color-text);
-    font-weight: 600;
+    box-shadow:
+      0 0 0 1px var(--color-border),
+      0 2px 6px -2px var(--color-shadow);
   }
 
   .content {

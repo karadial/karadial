@@ -14,8 +14,8 @@
   .panel {
     min-height: 28rem;
     overflow: hidden;
-    border: 1px solid var(--color-border);
-    border-radius: 0.75rem;
+    border-radius: var(--radius-lg);
+    box-shadow: 0 0 0 1px var(--color-border);
   }
 
   /* The panel fills its frame, so short sections do not shrink it. */

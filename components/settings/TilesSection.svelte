@@ -89,6 +89,9 @@
           max={limits.max}
           step={limits.step}
           value={appearance.current.layout[key]}
+          style:--fill="{((appearance.current.layout[key] - limits.min) /
+            (limits.max - limits.min)) *
+            100}%"
           oninput={(event) =>
             appearance.preview(withLayout(key, event.currentTarget.valueAsNumber))}
           onchange={(event) =>
@@ -181,26 +184,33 @@
 <style>
   .sliders {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) 3.5rem;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    gap: 0.6rem 1rem;
+    gap: 0.75rem 1rem;
     margin-top: 1rem;
+    padding: 1rem 1.25rem;
+    background: var(--color-bg);
+    border-radius: var(--radius-md);
+    box-shadow: inset 0 0 0 1px var(--color-border);
   }
 
   .sliders label {
     margin: 0;
+    font-size: 0.9375rem;
     font-weight: 400;
   }
 
-  input[type='range'] {
-    width: 100%;
-    margin: 0;
-    accent-color: var(--color-accent);
-  }
-
   output {
+    display: inline-grid;
+    place-items: center;
+    min-width: 3.5rem;
+    height: 1.5rem;
+    padding: 0 0.5rem;
+    background: var(--color-well);
     color: var(--color-text-muted);
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 500;
     font-variant-numeric: tabular-nums;
-    text-align: right;
   }
 </style>

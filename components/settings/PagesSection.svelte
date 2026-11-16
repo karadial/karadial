@@ -236,16 +236,21 @@
     list-style: none;
   }
 
+  /* Each page is a card that can be picked up. */
   .order li {
     display: flex;
     align-items: center;
     gap: 0.35rem;
-    padding: 0.3rem 0;
-    border-bottom: 1px solid var(--color-border);
+    padding: 0.375rem 0.5rem 0.375rem 0.875rem;
+    background: var(--color-bg);
+    border-radius: var(--radius-md);
+    box-shadow: inset 0 0 0 1px var(--color-border);
   }
 
   .order {
-    margin-top: 0.5rem;
+    display: grid;
+    gap: 0.375rem;
+    margin-top: 0.75rem;
   }
 
   .order li[draggable='true'] {
@@ -258,10 +263,6 @@
 
   .grip {
     color: var(--color-text-muted);
-  }
-
-  .order li:last-child {
-    border-bottom: none;
   }
 
   .name {
@@ -278,16 +279,27 @@
   }
 
   .order button {
-    min-width: 2.1rem;
-    padding: 0.25rem 0.5rem;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    background: transparent;
+    color: var(--color-text-muted);
+    border-radius: 50%;
+    box-shadow: none;
+  }
+
+  .order button:hover:not(:disabled) {
+    background: var(--color-well);
+    color: var(--color-text);
   }
 
   .lists label {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.625rem;
     margin: 0;
-    padding: 0.25rem 0;
+    padding: 0.375rem 0;
+    font-size: 0.9375rem;
     font-weight: 400;
     cursor: pointer;
   }
@@ -298,8 +310,8 @@
   }
 
   .tag {
-    padding: 0 0.4rem;
-    border: 1px solid var(--color-border-strong);
+    padding: 0 0.5rem;
+    background: var(--color-well);
     border-radius: 999px;
     color: var(--color-text-muted);
     font-size: 0.75rem;
