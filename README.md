@@ -24,7 +24,9 @@ Karakeep or Speed Dial 2.
   store one.
 - Privacy mode hides your bookmarks, for example while you share your screen.
   Hold Esc for a second on the new tab page to switch it.
-- Full keyboard navigation, light and dark theme.
+- Full keyboard navigation. Press `?` on the new tab page for the list of
+  shortcuts.
+- Light and dark theme.
 
 ## Targets
 

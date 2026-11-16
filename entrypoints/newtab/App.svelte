@@ -31,6 +31,7 @@
   import type { SectionId } from '@/components/settings/SettingsPanel.svelte';
 
   import SettingsDialog from './SettingsDialog.svelte';
+  import ShortcutsDialog from './ShortcutsDialog.svelte';
   import Tile from './Tile.svelte';
 
   /** Everything that belongs to one loaded configuration. Replaced as a whole when settings change. */
@@ -82,6 +83,7 @@
   let settingsOpen = $state(false);
   /** The section the options dialog shows. It reopens where it was left. */
   let settingsSection = $state<SectionId>('connection');
+  let shortcutsOpen = $state(false);
   /** Where the marker of the chosen page sits in the tab bar. It slides when the page changes. */
   let indicator = $state.raw<{ left: number; width: number } | null>(null);
 
@@ -528,9 +530,16 @@
    * character starts a search.
    */
   function onKeydown(event: KeyboardEvent) {
-    // In the options dialog Escape closes the dialog and nothing else.
-    if (event.isComposing || settingsOpen) return;
+    // In a dialog Escape closes the dialog and nothing else.
+    if (event.isComposing || settingsOpen || shortcutsOpen) return;
     holdEscape(event);
+    // Outside of a text field `?` lists the shortcuts. In the search field it is a character.
+    if (event.key === '?' && view === 'dial' && !isTyping(event.target)) {
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
+      event.preventDefault();
+      shortcutsOpen = true;
+      return;
+    }
     if (privacy || view !== 'dial' || isTyping(event.target)) return;
     if (event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey) {
       if (switchPage(event)) event.preventDefault();
@@ -910,7 +919,23 @@
   {/if}
 {/if}
 
+{#if view === 'dial'}
+  <button
+    class="round help"
+    type="button"
+    aria-label="Keyboard shortcuts"
+    title="Keyboard shortcuts (?)"
+    onclick={() => (shortcutsOpen = true)}
+  >
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="3" y="6" width="18" height="12" rx="3" />
+      <path d="M7 10h.01M11 10h.01M15 10h.01M8 14h8" />
+    </svg>
+  </button>
+{/if}
+
 <SettingsDialog bind:open={settingsOpen} bind:section={settingsSection} />
+<ShortcutsDialog bind:open={shortcutsOpen} />
 
 <style>
   /* The page is at least as tall as the window, so the tiles can be centred in what is left. */
@@ -1126,6 +1151,18 @@
 
   .round:active:not(:disabled) {
     transform: scale(0.94);
+  }
+
+  /* Stays in the corner of the window while the page scrolls. */
+  .help {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    box-shadow:
+      0 0 0 1px var(--color-border),
+      0 0.5rem 1.25rem -0.75rem var(--color-shadow);
   }
 
   .tabrow {
