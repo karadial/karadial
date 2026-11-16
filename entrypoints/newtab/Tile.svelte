@@ -95,17 +95,11 @@
 
 <style>
   .tile {
-    display: flex;
-    flex-direction: column;
+    display: block;
     min-width: 0;
-    padding: 0.4rem;
-    border-radius: 0.75rem;
+    border-radius: var(--radius-md);
     color: inherit;
     text-decoration: none;
-  }
-
-  .tile:hover {
-    background: var(--color-surface);
   }
 
   /* The tile being moved in the manual order. */
@@ -115,7 +109,7 @@
 
   .tile:focus-visible {
     outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
+    outline-offset: 4px;
   }
 
   .thumb {
@@ -124,13 +118,15 @@
     place-items: center;
     aspect-ratio: 16 / 10;
     overflow: hidden;
-    border: 1px solid var(--color-border);
-    border-radius: 0.5rem;
-    background: hsl(var(--hue) 35% 42%);
+    border-radius: var(--radius-md);
+    background: hsl(var(--hue) var(--placeholder-saturation) var(--placeholder-lightness));
+    box-shadow: 0 0 0 1px var(--color-border);
   }
 
   .tile:hover .thumb {
-    border-color: var(--color-border-strong);
+    box-shadow:
+      0 0 0 1px var(--color-border-strong),
+      0 0.75rem 1.375rem -0.875rem var(--color-shadow);
   }
 
   /*
@@ -144,7 +140,7 @@
     height: 100%;
     object-fit: cover;
     object-position: top center;
-    background: var(--color-surface);
+    background: var(--color-well);
   }
 
   /* The image fit chosen in the options, see applyAppearance(). */
@@ -162,28 +158,30 @@
   }
 
   .letter {
-    color: #fff;
-    font-size: 2.5rem;
+    color: hsl(var(--hue) 36% var(--placeholder-ink));
+    font-size: 2.25rem;
     font-weight: 600;
     line-height: 1;
   }
 
   .title,
   .host {
+    display: block;
     overflow: hidden;
+    line-height: 1.35;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .title {
-    margin-top: 0.45rem;
-    font-size: 0.9rem;
+    margin-top: 0.5rem;
+    font-size: 0.875rem;
     font-weight: 500;
   }
 
   .host {
     color: var(--color-text-muted);
-    font-size: 0.78rem;
+    font-size: 0.8125rem;
   }
 
   /* Hidden texts stay in the tooltip of the tile. */
@@ -193,12 +191,24 @@
   }
 
   :global(:root[data-tile-title='off']) .host {
-    margin-top: 0.45rem;
+    margin-top: 0.5rem;
   }
 
   @media (prefers-reduced-motion: no-preference) {
     .tile {
-      transition: background-color 120ms ease;
+      transition: transform 180ms ease;
+    }
+
+    .tile:hover {
+      transform: translateY(-2px);
+    }
+
+    .tile:active {
+      transform: none;
+    }
+
+    .thumb {
+      transition: box-shadow 180ms ease;
     }
 
     img {

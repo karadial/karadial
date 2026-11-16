@@ -82,6 +82,8 @@
   let settingsOpen = $state(false);
   /** The section the options dialog shows. It reopens where it was left. */
   let settingsSection = $state<SectionId>('connection');
+  /** Where the marker of the chosen page sits in the tab bar. It slides when the page changes. */
+  let indicator = $state.raw<{ left: number; width: number } | null>(null);
 
   const appearance = useAppearance();
   const privacy = $derived(appearance.current.privacyMode);
@@ -299,6 +301,45 @@
     // Coming back from the local results, the answer may already be there.
     if (remote?.term !== term || remote.problem) void searchServer();
   }
+
+  /** The button next to the search field. Without a search yet, typing then asks the server. */
+  function toggleScope() {
+    if (scope === 'server') {
+      searchLocal();
+    } else {
+      scope = 'server';
+      if (term && (remote?.term !== term || remote.problem)) void searchServer();
+    }
+    searchInput?.focus();
+  }
+
+  /** Puts the marker behind the chosen tab. With `reveal`, a tab scrolled out of the bar comes back. */
+  function placeIndicator(reveal: boolean) {
+    const bar = tablist;
+    const tab = bar?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]');
+    if (!bar || !tab) {
+      indicator = null;
+      return;
+    }
+    const { offsetLeft: left, offsetWidth: width } = tab;
+    indicator = { left, width };
+    if (!reveal) return;
+    const edge = 4;
+    if (left - edge < bar.scrollLeft) bar.scrollLeft = left - edge;
+    else if (left + width + edge > bar.scrollLeft + bar.clientWidth)
+      bar.scrollLeft = left + width + edge - bar.clientWidth;
+  }
+
+  // Runs after the tab bar was drawn, so the marker is in place before the next paint.
+  $effect(() => {
+    void [active?.listId, pages, showIcons];
+    const bar = tablist;
+    if (!bar) return;
+    placeIndicator(true);
+    const observer = new ResizeObserver(() => placeIndicator(false));
+    observer.observe(bar);
+    return () => observer.disconnect();
+  });
 
   function showPage(listId: string) {
     activeId = listId;
@@ -569,18 +610,49 @@
   {/if}
 {/snippet}
 
+<!-- One list with its tiles. Every panel is as wide as the page, so all tiles have one size. -->
+{#snippet panel(listId: string, name: string, icon: string | null | undefined, tiles: TileData[])}
+  <section class="panel" aria-labelledby="group-{listId}">
+    <div class="panel-head">
+      <h2 id="group-{listId}">
+        {#if icon && showIcons}<span aria-hidden="true">{icon}</span>{/if}
+        {name}
+      </h2>
+      <span class="count">{tiles.length}</span>
+    </div>
+    {#if tiles.length > 0}
+      {@render grid(tiles, listId)}
+    {:else}
+      <p class="hollow">This list has no link bookmarks yet.</p>
+    {/if}
+  </section>
+{/snippet}
+
 {#snippet message(title: string, text: string, retry: boolean, section: SectionId)}
   <div class="message">
     <h1>{title}</h1>
     <p>{text}</p>
     <div class="actions">
       {#if retry}
-        <button type="button" onclick={() => void refresh()} disabled={refreshing}>
+        <button class="pill" type="button" onclick={() => void refresh()} disabled={refreshing}>
           Try again
         </button>
       {/if}
-      <button type="button" onclick={() => openOptions(section)}>Open options</button>
+      <button class="pill" type="button" onclick={() => openOptions(section)}>Open options</button>
     </div>
+  </div>
+{/snippet}
+
+{#snippet brand()}
+  <div class="brand">
+    <!-- The same shapes as the add-on icon, see scripts/render-logo.ts. -->
+    <svg viewBox="0 0 32 32" aria-hidden="true">
+      <rect class="mark" width="32" height="32" rx="9" />
+      <rect x="7.5" y="7" width="5.4" height="18" rx="2.7" />
+      <path d="M15.2 15V7a9.8 8 0 0 1 9.8 8z" />
+      <rect x="15.2" y="17.2" width="7.8" height="7.8" rx="2.2" />
+    </svg>
+    KaraDial
   </div>
 {/snippet}
 
@@ -603,16 +675,21 @@
     <h1>KaraDial</h1>
     <p>Privacy mode is on and your bookmarks are hidden. Hold Esc for a second to show them.</p>
     <div class="actions">
-      <button type="button" onclick={() => appearance.update({ privacyMode: false })}>
+      <button class="pill" type="button" onclick={() => appearance.update({ privacyMode: false })}>
         Show bookmarks
       </button>
-      <button type="button" onclick={() => openOptions()}>Open options</button>
+      <button class="pill" type="button" onclick={() => openOptions()}>Open options</button>
     </div>
   </div>
 {:else if view === 'dial'}
-  <header>
-    <div class="top">
-      <div class="search" role="search">
+  <header class="top">
+    {@render brand()}
+    <div class="search" role="search">
+      <label>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="11" cy="11" r="7" />
+          <path d="m20 20-3.5-3.5" />
+        </svg>
         <input
           bind:this={searchInput}
           type="search"
@@ -626,16 +703,51 @@
           oninput={(event) => setQuery(event.currentTarget.value)}
           onkeydown={onSearchKeydown}
         />
-      </div>
-      <div class="tools">
-        {#if permitted}
-          <button type="button" onclick={() => void refresh()} disabled={refreshing}>
-            {refreshing ? 'Refreshing...' : 'Refresh'}
-          </button>
-        {/if}
-        <button type="button" onclick={() => openOptions()}>Options</button>
-      </div>
+      </label>
+      <button
+        class="scope"
+        type="button"
+        aria-pressed={scope === 'server'}
+        title="Search all of Karakeep instead of your pages"
+        onclick={toggleScope}
+      >
+        All of Karakeep
+      </button>
     </div>
+    <div class="tools">
+      {#if permitted}
+        <button
+          class="round"
+          class:spinning={refreshing}
+          type="button"
+          aria-label={refreshing ? 'Refreshing' : 'Refresh'}
+          title="Refresh"
+          onclick={() => void refresh()}
+          disabled={refreshing}
+        >
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M20 11a8 8 0 1 0-2.3 6.3" />
+            <path d="M20 4v7h-7" />
+          </svg>
+        </button>
+      {/if}
+      <button
+        class="round"
+        type="button"
+        aria-label="Options"
+        title="Options"
+        onclick={() => openOptions()}
+      >
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 7h10M18 7h2M4 17h2M10 17h10" />
+          <circle cx="16" cy="7" r="2" />
+          <circle cx="8" cy="17" r="2" />
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="tabrow">
     <div
       class="tabs"
       role="tablist"
@@ -644,6 +756,14 @@
       bind:this={tablist}
       onkeydown={onTabKeydown}
     >
+      {#if indicator}
+        <span
+          class="indicator"
+          aria-hidden="true"
+          style:width="{indicator.width}px"
+          style:transform="translateX({indicator.left}px)"
+        ></span>
+      {/if}
       {#each pages as page, index (page.listId)}
         {@const selected = page.listId === active?.listId}
         <button
@@ -661,42 +781,49 @@
         </button>
       {/each}
     </div>
-  </header>
+  </div>
 
   {#if hasData && !permitted}
     <p class="banner" role="status">
       KaraDial has no access to {host}. Showing the bookmarks saved on {savedAt}.
-      <button type="button" onclick={() => openOptions('connection')}>Open options</button>
+      <button class="pill" type="button" onclick={() => openOptions('connection')}>
+        Open options
+      </button>
     </p>
   {:else if hasData && problem}
     <p class="banner" role="status">
       {problemText(problem)} Showing the bookmarks saved on {savedAt}.
-      <button type="button" onclick={() => void refresh()} disabled={refreshing}>Try again</button>
+      <button class="pill" type="button" onclick={() => void refresh()} disabled={refreshing}>
+        Try again
+      </button>
     </p>
   {/if}
 
   <main bind:this={main} class:centered={appearance.current.centerVertically}>
     {#if term}
-      <section class="results" aria-labelledby="results-heading">
-        <div class="results-head">
-          <h2 id="results-heading">Search results</h2>
-          <div class="scope" role="group" aria-label="Search in">
-            <button type="button" aria-pressed={scope === 'local'} onclick={searchLocal}>
-              My pages
-            </button>
-            <button type="button" aria-pressed={scope === 'server'} onclick={searchEverything}>
-              All of Karakeep
-            </button>
-          </div>
+      <section class="results panel" aria-labelledby="results-heading">
+        <div class="panel-head">
+          {#if scope === 'local'}
+            <h2 id="results-heading">
+              {localHits.length}
+              {localHits.length === 1 ? 'match' : 'matches'} on your pages
+            </h2>
+            <span class="hint">Enter searches all of Karakeep</span>
+          {:else}
+            <h2 id="results-heading">All of Karakeep</h2>
+            {#if remote && remote.tiles.length > 0}
+              <span class="count">{remote.tiles.length}{remote.nextCursor !== null ? '+' : ''}</span
+              >
+            {/if}
+          {/if}
         </div>
 
         {#if scope === 'local'}
           {#if localHits.length > 0}
             {@render grid(localHits, null)}
-            <p class="note" role="status">
-              {#if localHits.length === LOCAL_LIMIT}Showing the first {LOCAL_LIMIT} matches.{/if}
-              Press Enter to search all of Karakeep.
-            </p>
+            {#if localHits.length === LOCAL_LIMIT}
+              <p class="note" role="status">Showing the first {LOCAL_LIMIT} matches.</p>
+            {/if}
           {:else}
             <p class="empty" role="status">
               Nothing on your pages matches. Press Enter to search all of Karakeep.
@@ -711,7 +838,9 @@
         {:else if remote.problem && remote.tiles.length === 0}
           <p class="empty" role="alert">
             {searchProblemText(remote.problem)}
-            <button type="button" onclick={() => void searchServer()}>Try again</button>
+            <button class="pill" type="button" onclick={() => void searchServer()}>
+              Try again
+            </button>
           </p>
         {:else if remote.tiles.length === 0}
           <p class="empty" role="status">Karakeep found no link bookmarks for this search.</p>
@@ -720,11 +849,18 @@
           {#if remote.problem}
             <p class="note" role="alert">
               {searchProblemText(remote.problem)}
-              <button type="button" onclick={() => void searchServer(true)}>Try again</button>
+              <button class="pill" type="button" onclick={() => void searchServer(true)}>
+                Try again
+              </button>
             </p>
           {:else if remote.nextCursor !== null}
             <p class="note">
-              <button type="button" onclick={() => void searchServer(true)} disabled={remote.busy}>
+              <button
+                class="pill"
+                type="button"
+                onclick={() => void searchServer(true)}
+                disabled={remote.busy}
+              >
                 {remote.busy ? 'Loading...' : 'Show more'}
               </button>
             </p>
@@ -759,23 +895,19 @@
           'pages',
         )}
       {:else}
-        {#if active.tiles.length > 0}
-          {@render grid(active.tiles, active.listId)}
-        {:else if active.groups.length === 0}
-          <p class="empty">This list has no link bookmarks yet.</p>
+        {#if active.tiles.length > 0 || active.groups.length === 0}
+          {@render panel(active.listId, active.name, active.icon, active.tiles)}
         {/if}
         {#each active.groups as group (group.listId)}
-          <section aria-labelledby="group-{group.listId}">
-            <h2 id="group-{group.listId}">
-              {#if group.icon && showIcons}<span aria-hidden="true">{group.icon}</span>{/if}
-              {group.name}
-            </h2>
-            {@render grid(group.tiles, group.listId)}
-          </section>
+          {@render panel(group.listId, group.name, group.icon, group.tiles)}
         {/each}
       {/if}
     </div>
   </main>
+
+  {#if hasData}
+    <footer>Updated {savedAt}</footer>
+  {/if}
 {/if}
 
 <SettingsDialog bind:open={settingsOpen} bind:section={settingsSection} />
@@ -788,41 +920,113 @@
     min-height: 100vh;
   }
 
-  header,
+  .top,
+  .tabrow,
+  .banner,
   main,
-  .banner {
+  footer {
     width: 100%;
     max-width: 110rem;
     margin: 0 auto;
-    padding: 0 clamp(0.75rem, 3vw, 2.5rem);
+    padding-right: clamp(1rem, 4vw, 3.5rem);
+    padding-left: clamp(1rem, 4vw, 3.5rem);
   }
 
-  header {
-    padding-top: 1rem;
-    padding-bottom: 0.5rem;
-  }
-
+  /* Search in the middle of the window, whatever stands left and right of it. */
   .top {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: 1fr minmax(0, 40rem) 1fr;
     align-items: center;
-    gap: 0.5rem 1.5rem;
-    margin-bottom: 0.75rem;
+    gap: 1.5rem;
+    padding-top: 1.5rem;
+    padding-bottom: 1rem;
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    justify-self: start;
+    gap: 0.5rem;
+    font-size: 1.0625rem;
+    font-weight: 600;
+  }
+
+  .brand svg {
+    width: 1.625rem;
+    height: 1.625rem;
+    fill: var(--color-on-accent);
+  }
+
+  .brand .mark {
+    fill: var(--color-accent);
   }
 
   .search {
-    flex: 1 1 14rem;
-    max-width: 36rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+    height: 3.5rem;
+    padding: 0 0.5rem 0 1.5rem;
+    background: var(--color-surface);
+    border-radius: 999px;
+    box-shadow:
+      0 0 0 1px var(--color-border),
+      0 0.5rem 1.5rem -1rem var(--color-shadow);
+  }
+
+  /* The label around icon and field: a click anywhere in it lands in the field. */
+  .search label {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+    height: 100%;
+    cursor: text;
+  }
+
+  .search:hover {
+    box-shadow:
+      0 0 0 1px var(--color-border-strong),
+      0 0.5rem 1.5rem -1rem var(--color-shadow);
+  }
+
+  .search:focus-within {
+    box-shadow:
+      0 0 0 2px var(--color-accent),
+      0 0.5rem 1.5rem -1rem var(--color-shadow);
+  }
+
+  .icon {
+    flex: none;
+    width: 1.125rem;
+    height: 1.125rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .search .icon {
+    width: 1.25rem;
+    height: 1.25rem;
+    color: var(--color-text-muted);
   }
 
   .search input {
-    width: 100%;
-    padding: 0.55rem 1rem;
-    background: var(--color-surface);
-    color: var(--color-text);
-    border: 1px solid var(--color-border);
-    border-radius: 999px;
+    flex: 1;
+    min-width: 0;
+    height: 100%;
+    padding: 0;
+    background: none;
+    color: inherit;
+    border: none;
+    outline: none;
     font: inherit;
+    font-size: 1.0625rem;
+    letter-spacing: inherit;
   }
 
   .search input::placeholder {
@@ -830,42 +1034,9 @@
     opacity: 1;
   }
 
-  .search input:hover {
-    border-color: var(--color-border-strong);
-  }
-
-  .search input:focus-visible {
-    border-color: var(--color-accent);
-    outline: 2px solid var(--color-accent);
-    outline-offset: 1px;
-  }
-
-  .tabs,
-  .tools,
-  .scope {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.25rem;
-  }
-
-  .tools {
-    margin-left: auto;
-  }
-
   button {
-    padding: 0.4rem 0.8rem;
-    background: transparent;
-    color: var(--color-text-muted);
-    border: 1px solid transparent;
-    border-radius: 999px;
     font: inherit;
-    font-size: 0.9rem;
     cursor: pointer;
-  }
-
-  button:hover:not(:disabled) {
-    background: var(--color-surface);
-    color: var(--color-text);
   }
 
   button:focus-visible {
@@ -875,50 +1046,165 @@
 
   button:disabled {
     cursor: default;
+  }
+
+  .scope,
+  .pill {
+    flex: none;
+    height: 2.5rem;
+    padding: 0 1rem;
+    background: var(--color-surface);
+    color: var(--color-text-muted);
+    border: none;
+    border-radius: 999px;
+    box-shadow: 0 0 0 1px var(--color-border);
+    font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: inherit;
+    white-space: nowrap;
+  }
+
+  /* Inside the search field, so it is recessed instead of outlined. */
+  .scope {
+    background: var(--color-well);
+    box-shadow: none;
+  }
+
+  .scope:hover {
+    background: var(--color-border-strong);
+    color: var(--color-text);
+  }
+
+  .pill:hover:not(:disabled) {
+    color: var(--color-text);
+    box-shadow: 0 0 0 1px var(--color-border-strong);
+  }
+
+  .scope:active,
+  .pill:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
+  .scope[aria-pressed='true'] {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+  }
+
+  .pill {
+    height: 2.25rem;
+    color: var(--color-text);
+  }
+
+  .pill:disabled {
     opacity: 0.6;
   }
 
-  [role='tab'] {
-    font-size: 1rem;
+  .tools {
+    display: flex;
+    justify-self: end;
+    gap: 0.5rem;
   }
 
-  [role='tab'][aria-selected='true'],
-  .scope [aria-pressed='true'] {
+  .round {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
     background: var(--color-surface);
-    border-color: var(--color-border);
-    color: var(--color-text);
-    font-weight: 600;
+    color: var(--color-text-muted);
+    border: none;
+    border-radius: 50%;
+    box-shadow: 0 0 0 1px var(--color-border);
   }
 
-  .tools button {
-    font-size: 0.8rem;
+  .round:hover:not(:disabled) {
+    color: var(--color-text);
+    box-shadow: 0 0 0 1px var(--color-border-strong);
+  }
+
+  .round:active:not(:disabled) {
+    transform: scale(0.94);
+  }
+
+  .tabrow {
+    display: flex;
+    justify-content: center;
+    padding-bottom: 1.5rem;
+  }
+
+  .tabs {
+    position: relative;
+    display: flex;
+    gap: 2px;
+    max-width: 100%;
+    padding: 4px;
+    overflow-x: auto;
+    background: var(--color-well);
+    border-radius: 999px;
+    box-shadow: inset 0 0 0 1px var(--color-border);
+    scrollbar-width: none;
+  }
+
+  /* The marker of the chosen page. It lies under the tabs and slides from one to the next. */
+  .indicator {
+    position: absolute;
+    top: 4px;
+    left: 0;
+    height: 2.5rem;
+    background: var(--color-surface);
+    border-radius: 999px;
+    box-shadow:
+      0 0 0 1px var(--color-border),
+      0 2px 6px -2px var(--color-shadow);
+    pointer-events: none;
+  }
+
+  [role='tab'] {
+    position: relative;
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 0.5rem;
+    height: 2.5rem;
+    padding: 0 1rem;
+    background: none;
+    color: var(--color-text-muted);
+    border: none;
+    border-radius: 999px;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    letter-spacing: inherit;
+  }
+
+  [role='tab']:hover,
+  [role='tab'][aria-selected='true'] {
+    color: var(--color-text);
+  }
+
+  [role='tab']:focus-visible {
+    outline-offset: -2px;
   }
 
   .banner {
-    margin-top: 0.25rem;
-    margin-bottom: 0.25rem;
+    margin-top: -0.5rem;
+    margin-bottom: 1rem;
     color: var(--color-text-muted);
     font-size: 0.875rem;
+    text-align: center;
   }
 
-  .banner button,
-  .message button,
-  .note button,
-  .empty button {
-    border-color: var(--color-border-strong);
-    color: var(--color-text);
-  }
-
-  .banner button,
-  .empty button {
+  .banner .pill,
+  .empty .pill {
+    height: 1.75rem;
     margin-left: 0.5rem;
-    padding: 0.15rem 0.6rem;
+    padding: 0 0.75rem;
     font-size: inherit;
   }
 
   main {
     flex: 1;
-    padding-top: 0.5rem;
     padding-bottom: 3rem;
   }
 
@@ -937,56 +1223,85 @@
     margin-left: auto;
   }
 
+  /* Lists stand below each other, each in a panel of the full width. */
+  #page-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+  }
+
+  #page-panel[hidden] {
+    display: none;
+  }
+
+  .panel {
+    min-width: 0;
+    padding: 1.5rem;
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 0 0 1px var(--color-border);
+  }
+
+  .panel-head {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: 1.0625rem;
+    font-weight: 600;
+  }
+
+  .count {
+    display: inline-grid;
+    place-items: center;
+    min-width: 1.625rem;
+    height: 1.5rem;
+    padding: 0 0.5rem;
+    background: var(--color-well);
+    color: var(--color-text-muted);
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 500;
+  }
+
+  .hint {
+    margin-left: auto;
+    color: var(--color-text-muted);
+    font-size: 0.8125rem;
+  }
+
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(var(--tile-min-width, 11rem), 100%), 1fr));
-    gap: var(--tile-gap, 0.5rem);
-  }
-
-  section {
-    margin-top: 1.5rem;
-  }
-
-  .results {
-    margin-top: 0;
-  }
-
-  .results-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.25rem 1rem;
-    margin-bottom: 0.4rem;
-  }
-
-  .results-head h2 {
-    margin: 0;
-  }
-
-  .scope button {
-    font-size: 0.8rem;
+    gap: var(--tile-gap, 1.5rem 1rem);
   }
 
   .note {
-    margin: 1.25rem 0 0;
+    margin: 1.5rem 0 0;
     color: var(--color-text-muted);
     font-size: 0.875rem;
     text-align: center;
   }
 
-  h2 {
-    margin: 0 0 0.4rem;
-    padding: 0 0.4rem;
+  .hollow {
+    margin: 0;
     color: var(--color-text-muted);
-    font-size: 0.85rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
   }
 
   .empty {
-    margin: 4rem 0;
+    margin: 3rem 0;
     color: var(--color-text-muted);
+    text-align: center;
+  }
+
+  footer {
+    padding-bottom: 1.5rem;
+    color: var(--color-text-muted);
+    font-size: 0.8125rem;
     text-align: center;
   }
 
@@ -1019,6 +1334,55 @@
     margin-top: 1.25rem;
   }
 
+  /* Narrow windows: name and buttons in one row, the search below them, tabs from the left. */
+  @media (max-width: 45rem) {
+    .top {
+      grid-template-columns: 1fr auto;
+      grid-template-areas:
+        'brand tools'
+        'search search';
+      gap: 0.75rem;
+      padding-top: 0.75rem;
+      padding-bottom: 0.75rem;
+    }
+
+    .brand {
+      grid-area: brand;
+    }
+
+    .tools {
+      grid-area: tools;
+    }
+
+    .search {
+      grid-area: search;
+      height: 3.25rem;
+      padding-left: 1rem;
+    }
+
+    .hint {
+      display: none;
+    }
+
+    .tabrow {
+      justify-content: flex-start;
+      padding-bottom: 1rem;
+    }
+
+    #page-panel {
+      gap: 0.75rem;
+    }
+
+    .panel {
+      padding: 1rem;
+      border-radius: var(--radius-md);
+    }
+
+    .grid {
+      gap: var(--tile-gap, 1rem 0.75rem);
+    }
+  }
+
   /* Small windows ignore a custom layout: they need all of their width. */
   @media (max-width: 30rem) {
     #page-panel,
@@ -1028,6 +1392,50 @@
 
     .grid {
       --tile-min-width: 8.5rem;
+    }
+
+    /* Enter still searches all of Karakeep. */
+    .scope {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .search,
+    .round {
+      transition:
+        box-shadow 150ms ease,
+        color 150ms ease,
+        transform 100ms ease;
+    }
+
+    .scope,
+    .pill {
+      transition:
+        background-color 150ms ease,
+        box-shadow 150ms ease,
+        color 150ms ease,
+        transform 100ms ease;
+    }
+
+    [role='tab'] {
+      transition: color 150ms ease;
+    }
+
+    .indicator {
+      transition:
+        transform 280ms cubic-bezier(0.3, 0.7, 0.2, 1),
+        width 280ms cubic-bezier(0.3, 0.7, 0.2, 1);
+    }
+
+    .spinning .icon {
+      animation: spin 900ms linear infinite;
+    }
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
     }
   }
 </style>
