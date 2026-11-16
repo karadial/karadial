@@ -23,6 +23,7 @@
     "format": "prettier --write .",
     "typecheck": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
+    "logo": "node scripts/render-logo.ts",
     "postinstall": "wxt prepare"
   },
   "overrides": {
