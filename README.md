@@ -4,7 +4,7 @@ KaraDial is a browser extension that replaces the new tab page with a speed dial
 for bookmarks stored in your self-hosted [Karakeep](https://karakeep.app) instance.
 
 KaraDial is an independent open-source project. It is not affiliated with
-Karakeep or Speed Dial 2.
+Karakeep.
 
 > **Status:** early development. The features below work in Firefox and Zen.
 
