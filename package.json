@@ -19,6 +19,7 @@
     "build:firefox": "wxt build -b firefox",
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
+    "zip:firefox:listed": "node scripts/zip-listed.ts",
     "lint": "eslint . && prettier --check .",
     "format": "prettier --write .",
     "typecheck": "svelte-check --tsconfig ./tsconfig.json",

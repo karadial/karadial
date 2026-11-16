@@ -83,6 +83,12 @@ npm run zip:firefox     # .output/karadial-<version>-firefox.zip
 npm run zip             # .output/karadial-<version>-chrome.zip
 ```
 
+The build for a listing on addons.mozilla.org is made with
+`npm run zip:firefox:listed` and written to
+`.output/karadial-<version>-firefox-listed.zip`. It differs in one point: its
+manifest names no update URL, because addons.mozilla.org updates a listed
+add-on itself. Both commands write to `.output/firefox-mv3/`.
+
 The sources archive contains everything needed to reproduce the Firefox build
 with the commands above. The bundler is [WXT](https://wxt.dev) (Vite), the UI
 is written in [Svelte](https://svelte.dev) and TypeScript. All dependency

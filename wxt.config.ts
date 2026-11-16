@@ -1,9 +1,14 @@
 import { defineConfig } from 'wxt';
 
-import { GECKO_ID, UPDATE_URL } from './lib/release/firefox';
+import { geckoSettings } from './lib/release/firefox';
+
+/** Set by `npm run zip:firefox:listed`: the build for the listing on addons.mozilla.org. */
+const LISTED = process.env.KARADIAL_LISTED === '1';
 
 // See https://wxt.dev/api/reference/wxt/interfaces/InlineConfig.html
 export default defineConfig({
+  // The listed build gets its own file name, so it is never mistaken for the other one.
+  ...(LISTED && { zip: { artifactTemplate: '{{name}}-{{version}}-{{browser}}-listed.zip' } }),
   // WXT defaults to MV2 for Firefox. KaraDial is MV3 on every browser.
   manifestVersion: 3,
   modules: ['@wxt-dev/module-svelte'],
@@ -23,19 +28,7 @@ export default defineConfig({
       extension_pages: "script-src 'self'; object-src 'self';",
     },
     ...(browser === 'firefox' && {
-      browser_specific_settings: {
-        gecko: {
-          id: GECKO_ID,
-          // Self-distributed builds update from the project website. A build
-          // listed on addons.mozilla.org must not carry this key.
-          update_url: UPDATE_URL,
-          // First Firefox release with built-in data collection consent.
-          strict_min_version: '140.0',
-          // Sent to the user's own Karakeep instance and nowhere else: the API
-          // key with every request, search terms for the server side search.
-          data_collection_permissions: { required: ['authenticationInfo', 'searchTerms'] },
-        },
-      },
+      browser_specific_settings: { gecko: geckoSettings(LISTED) },
     }),
   }),
 });
